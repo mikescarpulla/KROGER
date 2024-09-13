@@ -19,7 +19,7 @@ For better or worse, the current script keeps all sorts of things we have done i
 
 To run a scenario - best thing is to load the script into the matlab code editor, then put a debugging stop somewhere and press run.  Then step through each line to see what it is doing (including "step in" to go into the subroutines.  
 
-The current database is "Ga2O3_Varley_all_defecs_new_032124.mat" - when you run the script it will ask you to pick the defect database - double click on this file.  
+The current database is "Ga2O3_Varley_all_defecs_new_072924.mat" - when you run the script it will ask you to pick the defect database - double click on this file.  
 
 Then, it will open a dialog box asking you for the filename you want outputs to save into.  Just type a name without an extension - like "junk" and then look in the folder when it is all done.  
 
