@@ -60,7 +60,7 @@ G0_CrO2_ls = zeros(size(T));
 
 
 % define masks needed based on Tranges given for the expressions for G0.  logical array same size as T with ones where true and 0 where false
-mask1 = (T>298) .* (T<=600);      % solid
+mask1 = (T>=298) .* (T<=600);      % solid
 
 % solid
 G0_CrO2_ls = mask1.*(-610530.907 +587.380815*T -8.577000000e-03*T.^(2) -94.5580000*T.*log(T));
@@ -68,8 +68,9 @@ G0_CrO2_ls = mask1.*(-610530.907 +587.380815*T -8.577000000e-03*T.^(2) -94.55800
 % now convert units to eV per Ga2O
 G0_CrO2_ls = G0_CrO2_ls/(avo*q);   % eV/Ga2O molecule
 
-% Now take Ptot and Xi into account.  
-G0_CrO2_ls = G0_CrO2_ls + kB_eV*T.* ( log(P_tot/P_ref) + log(X_i));
+% Now take Ptot and Xi into account.  For solids and liquids, it's only Xi
+% that matters while gasses/vapors have the P/Pref term too.  
+G0_CrO2_ls = G0_CrO2_ls + kB_eV*T.* log(X_i);
 
 % set any that are zero becasue of masking to infintiy so it produces an
 % obvious error that can be seen 

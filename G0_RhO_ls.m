@@ -1,4 +1,4 @@
-function [G0_ZrO2_ls] = G0_ZrO2_ls(T, P_tot, X_i, P_units)
+function [G0_RhO_ls] = G0_RhO_ls(T, P_tot, X_i, P_units)
 %
 %  each substance should have a function Go_substance_ls.m for condensed
 %  phases, and Go_substance_gv.m for gas/vapor.  See FAQs below.  
@@ -56,73 +56,40 @@ nP = size(P_tot,1);
 % shape T and P to both be 2D arrays so that all calcs are vectorized (matrixized?)
 T = T*ones(1,nP);   % copy T to make a matrix with as many columns as P has entries
 P_tot = ones(nT,1)*P_tot;   % similarly for P - copy down as many rows as T has entries
-G0_ZrO2_s1 = zeros(size(T));
-G0_ZrO2_s2 = zeros(size(T));
-G0_ZrO2_s3 = zeros(size(T));
-G0_ZrO2_liquid = zeros(size(T));
-G0_ZrO2_ls = zeros(size(T));
+G0_RhO_ls = zeros(size(T));
 
 
 % define masks needed based on Tranges given for the expressions for G0.  logical array same size as T with ones where true and 0 where false
-mask1 = (T>=298) .* (T<=1478);      % solid 1
-mask2 = (T>1478) .* (T<=2950);         
-mask3 = (T>=298) .* (T<=2950);      % solid 2 
-mask4 = (T>=298) .* (T<=2950);    % solid 3
-mask5 = (T>=298) .* (T<=3500);    % liquid
+mask1 = (T>298) .* (T<=1023);      % solid
 
-% solid1
-G0_ZrO2_s1 = mask1.*(-1106167.26 +652.588280*T -2337.90322*T.^(0.5) +20068472.3*T.^(-2) -94.6211600*T.*log(T));
-G0_ZrO2_s1 = G0_ZrO2_s1 + mask2.*(-1121304.04 +454.989704*T -74.4752000*T.*log(T));
-
-% solid2 
-G0_ZrO2_s2 = mask3.*(-1115350.77 +450.968857*T -74.4752000*T.*log(T)  );
-
-% solid3 
-G0_ZrO2_s3 = mask4.*(-1104765.78 +446.948857*T -74.4752000*T.*log(T) );
-
-% liquid
-G0_ZrO2_liquid = mask5.*(-1057215.65 +537.807469*T -87.8640000*T.*log(T));
-
-
-% choose the min Go, thus automatically selecting the right phase.  This is
-% written assuming
-G0_ZrO2_ls = min( cat(3,G0_ZrO2_s1, G0_ZrO2_s2, G0_ZrO2_s3, G0_ZrO2_liquid),[],3);  % stack the two Go matrices along a dummy dimension, then take the min along that dimension.  Yes the [] is needed in the syntax for min() 
-
+% solid
+G0_RhO_ls = mask1.*(- 104058.996 + 228.377327*T - 1.115036000e-02*T.^(2)- 41.1705600 *T.*log(T));
 
 % now convert units to eV per Ga2O
-G0_ZrO2_ls = G0_ZrO2_ls/(avo*q);   % eV/Ga2O molecule
+G0_RhO_ls = G0_RhO_ls/(avo*q);   % eV/Ga2O molecule
 
-% Now take Ptot and Xi into account.For solids and liquids, it's only Xi
-% that matters while gasses/vapors have the P/Pref term too.    
-G0_ZrO2_ls = G0_ZrO2_ls + kB_eV*T.* log(X_i);
+% Now take Ptot and Xi into account.  
+G0_RhO_ls = G0_RhO_ls + kB_eV*T.* ( log(P_tot/P_ref) + log(X_i));
 
 % set any that are zero becasue of masking to infintiy so it produces an
 % obvious error that can be seen 
-G0_ZrO2_ls(G0_ZrO2_ls==0) = Inf;
+G0_RhO_ls(G0_RhO_ls==0) = Inf;
 
 end
 
 
-%% for referecne, it's nice to copy the original data here in comments to allow proofreading.  For exaple this is the text file from FactSage for H2O.  
-% % % 
-% % % View Data  ZrO2     Units:  T(K) P(atm) Energy(J) Quantity(mol) 
-% % % Name: zirconium dioxide
-% % % 
-% % %   G(T) J/mol - 1 atm  
-% % % 
-% % %              G(T)                   G(T)                     G(T)                     T(K)        
-% % % ____________ ______________________ ________________________ ________________________ ___________ 
-% % % 
-% % % S1         1 - 1106167.26           + 652.588280     T       - 2337.90322     T^0.5   298 - 1478  
-% % % S1         1 + 20068472.3     T^-2  - 94.6211600     T ln(T)                          298 - 1478  
-% % % S1         2 - 1121304.04           + 454.989704     T       - 74.4752000     T ln(T) 1478 - 2950 
-% % % S1         3 - 1160801.00           + 575.349131     T       - 87.8640000     T ln(T) 2950 - 3500 
-% % % S2         4 - 1115350.77           + 450.968857     T       - 74.4752000     T ln(T) 298 - 2950  
-% % % S2         5 - 1154847.73           + 571.328284     T       - 87.8640000     T ln(T) 2950 - 3500 
-% % % S3         6 - 1104765.78           + 446.948857     T       - 74.4752000     T ln(T) 298 - 2950  
-% % % S3         7 - 1144262.74           + 567.308284     T       - 87.8640000     T ln(T) 2950 - 3500 
-% % % L1         8 - 1057215.65           + 537.807469     T       - 87.8640000     T ln(T) 298 - 3500  
-% % % G1         9 - 309428.051           + 124.420897     T       + 1196235.07     T^-1    298 - 6000  
-% % % G1         9 + 7.18939396     T^0.5 - 64971632.0     T^-2    - 58.1863462     T ln(T) 298 - 6000  
-% % % ____________ ______________________ ________________________ ________________________ ___________ 
-% % % 
+% View Data   RhO     Units:  T(K) P(atm) Energy(J) Quantity(mol) 
+% Name: Rhodium Oxide
+% 
+%   G(T) J/mol - 1 atm  
+% 
+%              G(T)                     G(T)                   G(T)                   T(K)       
+% ____________ ________________________ ______________________ ______________________ __________ 
+% 
+% S1         1 - 104058.996             + 228.377327     T     - 1.115036000E-02 T^ 2 298 - 1023 
+% S1         1 - 41.1705600     T ln(T)                                               298 - 1023 
+% G1         2 421721.481               - 11.5228217     T     - 1.096835850E-02 T^ 2 298 - 3000 
+% G1         2 - 74277.5137     T^-1    + 9.418016667E-07 T^ 3 - 158.323317     T^0.5 298 - 3000 
+% G1         2 - 34.2732447     T ln(T)                                               298 - 3000 
+% ____________ ________________________ ______________________ ______________________ __________ 
+% 

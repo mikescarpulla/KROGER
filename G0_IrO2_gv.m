@@ -61,7 +61,7 @@ G0_IrO2_gv = zeros(size(T));
 
 % define masks needed based on Tranges given for the expressions for G0.  logical array same size as T with ones where true and 0 where false
 mask1 = (T>298) .* (T<=900);      % gas/vapor
-mask3 = (T>900) .* (T<=2000);      
+mask3 = (T>900) .* (T<=2100);      
 
 % gas/vapor
 G0_IrO2_gv = mask1.*(198977.352 + 218550*T.^(-1) + 161.679228*T - 339.76*T.^(0.5) - 61.66*T.*log(T));

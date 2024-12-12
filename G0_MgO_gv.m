@@ -61,11 +61,15 @@ G0_MgO_gv = zeros(size(T));
 
 % define masks needed based on Tranges given for the expressions for G0.  logical array same size as T with ones where true and 0 where false
 mask1 = (T>298) .* (T<=1100);     
-mask2 = (T>1100) .* (T<=4000);     
+mask2 = (T>1100) .* (T<=4500); 
+mask3 = (T>4500) .* (T<=6000); 
 
 % gas/vapor
-G0_MgO_gv = mask1.*(- 1102681.16 + 10851502.7*T.^(-1) + 8518.40222*T -141244.711*T.^(0.5) + 5.878503055e-2*T.^(2) + 3.784973866e-6*T.^(3) + 435353.536*log(T) - 898.190474*T.*log(T));
+G0_MgO_gv = mask1.*(- 1102681.16 + 8518.40222*T + 10851502.7*T.^(-1) - 141244.711*T.^(0.5) + 5.878503055E-02*T.^(2) + 3.784973866E-06*T.^(3) + 435353.536*log(T) - 898.190474*T.*log(T));
 G0_MgO_gv = G0_MgO_gv + mask2.*(- 2483196.14 + 70329447*T.^(-1) + 2388.43394*T + 3.419105015e-3*T.^(2) - 78828.9894*T.^(0.5) + 582033.945*log(T) - 243.395147*T.*log(T));
+G0_MgO_gv = G0_MgO_gv + mask3.*(- 13298543.7 + 977136770*T.^(-1) + 3472.65363*T - 191013.773*T.^(0.5) + 2447324.28*log(T) - 305.763456*T.*log(T));
+
+
 
 % now convert units to eV per Ga2O
 G0_MgO_gv = G0_MgO_gv/(avo*q);   % eV/Ga2O molecule

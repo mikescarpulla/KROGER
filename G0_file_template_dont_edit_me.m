@@ -82,12 +82,18 @@ G0_substance = G0_substance + mask3.*(-256638.942 - 1924378.83*T.^(-1) - 1118.62
 % now convert units to eV per Ga2O
 G0_substance = G0_substance/(avo*q);   % eV/Ga2O molecule
 
-% Now take Ptot and Xi into account.  
-G0_substance = G0_substance + kB_eV*T.* ( log(P_tot/P_ref) + log(X_i));
+% Now take Ptot and Xi into account.  For solids and liquids, it's only Xi
+% that matters while gasses/vapors have the P/Pref term too.  Pick one of
+% the lines below and delete the other one.  
+
+G0_substance = G0_substance + kB_eV*T.* log(X_i);  %condensed phases
+
+G0_substance = G0_substance + kB_eV*T.* ( log(P_tot/P_ref) + log(X_i));   %gas/vapor
 
 % set any that are zero becasue of masking to infintiy so it produces an
 % obvious error that can be seen 
 G0_substance(G0_substance==0) = Inf;
+G0_substance(isnan(G0_substance)) = Inf;   % set NaN to Inf too - probably this will arise at 0 K.  
 
 end
 

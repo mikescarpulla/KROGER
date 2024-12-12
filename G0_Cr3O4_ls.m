@@ -69,7 +69,7 @@ G0_Cr3O4_ls = mask1.*(-1479091.69 +1015.79091*T +2.663814450E-04*T.^(2) +1422428
 G0_Cr3O4_ls = G0_Cr3O4_ls/(avo*q);   % eV/Ga2O molecule
 
 % Now take Ptot and Xi into account.  
-G0_Cr3O4_ls = G0_Cr3O4_ls + kB_eV*T.* ( log(P_tot/P_ref) + log(X_i));
+G0_Cr3O4_ls = G0_Cr3O4_ls + kB_eV*T.*  log(X_i);
 
 % set any that are zero becasue of masking to infintiy so it produces an
 % obvious error that can be seen 

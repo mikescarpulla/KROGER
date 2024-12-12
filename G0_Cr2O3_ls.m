@@ -62,7 +62,7 @@ G0_Cr2O3_ls = zeros(size(T));
 
 
 % define masks needed based on Tranges given for the expressions for G0.  logical array same size as T with ones where true and 0 where false
-mask1 = (T>115) .* (T<=140);      % solid
+mask1 = (T>=115) .* (T<=140);      % solid
 mask2 = (T>140) .* (T<=298);
 mask3 = (T>298) .* (T<=3000);
 mask4 = (T>298) .* (T<=1800);      % liquid.  
@@ -86,7 +86,7 @@ G0_Cr2O3_ls = min( cat(3,G0_Cr2O3_solid, G0_Cr2O3_liquid),[],3);  % stack the tw
 G0_Cr2O3_ls = G0_Cr2O3_ls/(avo*q);   % eV/Ga2O molecule
 
 % Now take Ptot and Xi into account.  
-G0_Cr2O3_ls = G0_Cr2O3_ls + kB_eV*T.* ( log(P_tot/P_ref) + log(X_i));
+G0_Cr2O3_ls = G0_Cr2O3_ls + kB_eV*T.*  log(X_i);
 
 % set any that are zero becasue of masking to infintiy so it produces an
 % obvious error that can be seen 

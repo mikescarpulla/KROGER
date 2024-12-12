@@ -63,8 +63,9 @@ G0_SiO_gv = zeros(size(T));
 % define masks needed based on Tranges given for the expressions for G0.  logical array same size as T with ones where true and 0 where false
 mask1 = (T>298) .* (T<=1500);     
 mask2 = (T>1500) .* (T<=6000);
-G0_SiO_gv = G0_SiO_gv + mask1.*(-106328.817  -55.0474217*T  -1.407635000E-02*T.^(2) -36687.9600*T.^(-1)  +3.274043333E-06*T.^(3) -4.072823000E-10*T.^(4) -22.2891800*T.*log(T)  );
-G0_SiO_gv = G0_SiO_gv + mask2.*(-108244.663  +5.21770132*T  -2.226776000E-03*T.^(2) -549071.600*T.^(-1)  +2.020010000E-07*T.^(3) -1.019819000E-11*T.^(4)  -31.9925100*T.*log(T) );                                            1500 -6000 
+G0_SiO_gv = G0_SiO_gv + mask1.*(-106328.817 - 55.0474217*T - 1.407635000E-02*T.^(2) - 36687.9600*T.^(-1) + 3.274043333E-06*T.^(3) - 4.072823000E-10*T.^(4) - 22.2891800*T.*log(T));
+G0_SiO_gv = G0_SiO_gv + mask2.*(-108244.663 + 5.21770132*T - 2.226776000E-03*T.^(2) - 549071.600*T.^(-1) + 2.020010000E-07*T.^(3) - 1.019819000E-11*T.^(4) - 31.9925100*T.*log(T));
+
 
 % % choose the min Go, thus automatically selecting the right phase.  
 % G0_substance = min( cat(3,G0_substance_s1 G0_substance_s2),[],3);  % stack the two Go matrices along a dummy dimension, then take the min along that dimension.  Yes the [] is needed in the syntax for min() 

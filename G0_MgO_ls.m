@@ -58,17 +58,26 @@ nP = size(P_tot,1);
 % shape T and P to both be 2D arrays so that all calcs are vectorized (matrixized?)
 T = T*ones(1,nP);   % copy T to make a matrix with as many columns as P has entries
 P_tot = ones(nT,1)*P_tot;   % similarly for P - copy down as many rows as T has entries
-G0_MgO_ls = zeros(size(T));
+G0_MgO_s = zeros(size(T));
+G0_MgO_l = zeros(size(T));
 
 
 mask1 = (T>298) .* (T<=3098);      %logical array same size as T with ones where true and 0 where false
-mask2 = (T>298) .* (T<=3098);      
+mask2 = (T>3098) .* (T<=3500);      
 
 % solid
-G0_MgO_ls = G0_MgO_ls + mask1.*(-611541.379 + 310577.002*T.^(-1) - 974102.005*T.^(-2) - 1184.796*T.^(0.5) + 420.064762*T - 61.1096505*T.*log(T));
+G0_MgO_s = G0_MgO_s + mask1.*(-611541.379 + 310577.002*T.^(-1) - 974102.005*T.^(-2) - 1184.796*T.^(0.5) + 420.064762*T - 61.1096505*T.*log(T));
+G0_MgO_s = G0_MgO_s + mask2.*(-662387.670 + 462.122764*T - 66.9440000*T.*log(T));
+             
 
 % liquid
-G0_MgO_ls = G0_MgO_ls + mask2.*(- 554894.205 - 974102.005*T.^(-2) - 261375.798*T.^(-1) + 490.908663*T - 1184.796*T.^(0.5) + 1.571092e-3*T.^(2) - 72.7955625*T.*log(T));
+G0_MgO_l = G0_MgO_l + mask1.*(- 554894.205 - 974102.005*T.^(-2) - 261375.798*T.^(-1) + 490.908663*T - 1184.796*T.^(0.5) + 1.571092e-3*T.^(2) - 72.7955625*T.*log(T));
+G0_MgO_l = G0_MgO_l + mask2.*(- 584985.686 + 437.137549*T - 66.9440000*T.*log(T));
+
+
+% choose the min Go between s and l to choose the right phase at each T
+G0_MgO_ls = min( cat(3, G0_MgO_s, G0_MgO_l),[],3);  % stack the two Go matrices along a dummy dimension, then take the min along that dimension.  Yes the [] is needed in the syntax for min() 
+
 
 
 % now convert units to eV per Ga2O

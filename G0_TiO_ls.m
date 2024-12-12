@@ -63,9 +63,9 @@ G0_TiO_ls = zeros(size(T));
 
 
 % define masks needed based on Tranges given for the expressions for G0.  logical array same size as T with ones where true and 0 where false
-mask1 = (T>298) .* (T<=2500);      % solid 1
-mask2 = (T>298) .* (T<=2500) ;      % solid 2     
-mask3 = (T>298) .* (T<=1200);      % liquid. 
+mask1 = (T>=298) .* (T<=2500);      % solid 1
+mask2 = (T>=298) .* (T<=2500) ;      % solid 2     
+mask3 = (T>=298) .* (T<=1200);      % liquid. 
 mask4 = (T>1200) .* (T<=4500);
 
 % solid1
@@ -86,7 +86,7 @@ G0_TiO_ls = min( cat(3,G0_TiO_s1, G0_TiO_s2, G0_TiO_liquid),[],3);  % stack the 
 G0_TiO_ls = G0_TiO_ls/(avo*q);   % eV/Ga2O molecule
 
 % Now take Ptot and Xi into account.  
-G0_TiO_ls = G0_TiO_ls + kB_eV*T.* ( log(P_tot/P_ref) + log(X_i));
+G0_TiO_ls = G0_TiO_ls + kB_eV*T.* log(X_i);
 
 % set any that are zero becasue of masking to infintiy so it produces an
 % obvious error that can be seen 

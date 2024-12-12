@@ -70,8 +70,9 @@ G0_CrO_ls = G0_CrO_ls + mask2.*(-312226.950 +355.301302*T -62.7600000*T.*log(T))
 % now convert units to eV per Ga2O
 G0_CrO_ls = G0_CrO_ls/(avo*q);   % eV/Ga2O molecule
 
-% Now take Ptot and Xi into account.  
-G0_CrO_ls = G0_CrO_ls + kB_eV*T.* ( log(P_tot/P_ref) + log(X_i));
+% Now take Ptot and Xi into account.  For solids and liquids, it's only Xi
+% that matters while gasses/vapors have the P/Pref term too.   
+G0_CrO_ls = G0_CrO_ls + kB_eV*T.* log(X_i);
 
 % set any that are zero becasue of masking to infintiy so it produces an
 % obvious error that can be seen 
