@@ -1,4 +1,6 @@
-function [Ga_O_stoich, num_Ga, num_O, num_Si, num_H, num_Fe, num_Sn, num_Cr, num_Ti, num_Ir, num_Mg, num_Ca, num_Zn, num_Co, num_Zr, num_Hf, num_Ta, num_Ge] =  Ga2O3_stoich(solution, conditions, defects)
+function [ratio_stoich, element_totals] = Ga2O3_stoich(solution, conditions, defects)
+% function [Ga_O_stoich, num_Ga, num_O, num_Si, num_H, num_Fe, num_Sn, num_Cr, num_Ti, num_Ir, num_Mg, num_Ca, num_Zn, num_Co, num_Zr, num_Hf, num_Ta, num_Ge] =  Ga2O3_stoich(solution, conditions, defects)
+
 
 num_entries = size(solution.chargestates, 1);
 num_Ga = zeros(num_entries,1);
@@ -18,6 +20,8 @@ num_Zr = zeros(num_entries,1);
 num_Hf = zeros(num_entries,1);
 num_Ta = zeros(num_entries,1);
 num_Ge = zeros(num_entries,1);
+num_Pt = zeros(num_entries,1);
+num_Rh = zeros(num_entries,1);
 Ga_O_stoich = zeros(num_entries,2);
 
 
@@ -40,9 +44,15 @@ for j = 1:num_entries  % loops over all the T's
     num_Hf(j) = dot(defects.cs_dm(:,15),solution.chargestates(j,:));
     num_Ta(j) = dot(defects.cs_dm(:,16),solution.chargestates(j,:));
     num_Ge(j) = dot(defects.cs_dm(:,17),solution.chargestates(j,:));
+    num_Pt(j) = dot(defects.cs_dm(:,18),solution.chargestates(j,:));
+    num_Rh(j) = dot(defects.cs_dm(:,19),solution.chargestates(j,:));
     Ga_O_stoich(j,:) = [num_Ga(j) num_O(j)]/1.91e22;
 end
 
 ratio = Ga_O_stoich(:,2)./(Ga_O_stoich(:,1) + Ga_O_stoich(:,2));
 
-Ga_O_stoich = cat(2,ratio,Ga_O_stoich);
+ratio_stoich = cat(2,ratio,Ga_O_stoich);
+
+element_totals = [num_Ga num_O num_Si num_H num_Fe num_Sn num_Cr num_Ti num_Ir num_Mg num_Ca num_Zn num_Co num_Zr num_Hf num_Ta num_Ge num_Pt num_Rh];
+
+

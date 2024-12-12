@@ -13,21 +13,27 @@
 % dependent Eg for finding Ef gueses.  Cleaned up code. 1/3/24 - MAS
 % editing of fixed elements to speed up, correction of denominators in site
 % blocking (1-sum not sum-1 for the finite case).
+% 10-4-2024 added option to supply a vector of initial guesses for
+% Ef_mu_vec that will be helpful for generalized quenching.  
 
 
-function [equilib_dark_sol] = defect_equilibrium_dark_with_frozen(conditions, defects)
+function [equilib_dark_sol] = defect_equilibrium_dark_with_frozen(dummy_conditions, dummy_defects)
 
 
 %%%%%%% build up holder variables for outputs %%%%%%%%%%
-N_charge_states_out = zeros(size(conditions.T_equilibrium,2),defects.num_chargestates);   % in the final output, each charge state has a column, each row is a different T. Need this different name for the holder matrix because of scope of n_defects in some of the functions
-n_out = zeros(numel(conditions.T_equilibrium),1);   %holder column vector # rows same as T
-p_out = zeros(numel(conditions.T_equilibrium),1);
-EF_out = zeros(numel(conditions.T_equilibrium),1);
-mu_out = zeros(numel(conditions.T_equilibrium),conditions.num_elements);
-tot_bal_err_out = zeros(numel(conditions.T_equilibrium),1);
-charge_bal_err_out = zeros(numel(conditions.T_equilibrium),1);
-element_bal_err_out = zeros(numel(conditions.T_equilibrium),1);
-stoich_out = zeros(numel(conditions.T_equilibrium),conditions.num_elements);
+N_charge_states_out = zeros(size(dummy_conditions.T_equilibrium,2),dummy_defects.num_chargestates);   % in the final output, each charge state has a column, each row is a different T. Need this different name for the holder matrix because of scope of n_defects in some of the functions
+N_defects_out = zeros(size(dummy_conditions.T_equilibrium,2),dummy_defects.num_defects);
+n_out = zeros(numel(dummy_conditions.T_equilibrium),1);   %holder column vector # rows same as T
+p_out = zeros(numel(dummy_conditions.T_equilibrium),1);
+sth1_out = zeros(numel(dummy_conditions.T_equilibrium),1);
+sth2_out = zeros(numel(dummy_conditions.T_equilibrium),1);
+EF_out = zeros(numel(dummy_conditions.T_equilibrium),1);
+mu_out = zeros(numel(dummy_conditions.T_equilibrium),dummy_conditions.num_elements);
+tot_bal_err_out = zeros(numel(dummy_conditions.T_equilibrium),1);
+charge_bal_err_out = zeros(numel(dummy_conditions.T_equilibrium),1);
+element_bal_err_out = zeros(numel(dummy_conditions.T_equilibrium),1);
+stoich_out = zeros(numel(dummy_conditions.T_equilibrium),dummy_conditions.num_elements);
+
 
 
 
@@ -36,13 +42,26 @@ stoich_out = zeros(numel(conditions.T_equilibrium),conditions.num_elements);
 %%% properties.  At every T we assign a new value of each property to each
 %%% variable as needed.  Future fix: assign T dependent dG0 values for
 %%% each chargestate for example.
-%% all the subroutines will be written to use "conditions_dummy" as a dummy variable but when actually called should be called with "Tloop_conditions"
-Tloop_conditions = conditions;
+%% all the subroutines will be written to use a dummy name version of conditions as a dummy variable but when actually called should be called with "Tloop_conditions"
+Tloop_conditions = dummy_conditions;
 
 %%%% detect the type of calculation requested.  1=nothing frozen, 2=dfects frozen,
 %%%% 3=elements frozen, 4 = defects and elments frozen.  The calc type gets
 %%%% written back into the conditions variable
 [Tloop_conditions] = Calc_Method(Tloop_conditions);
+
+
+% check if guesses are supplied for Ef_mu_vec or not, then check if they
+% are valid
+if strcmp(dummy_conditions.Ef_mu_guesses_supplied_flag, 'On')
+    if isempty(dummy_conditions.Ef_fixed_mu_guesses) || (max(size(dummy_conditions.Ef_fixed_mu_guesses)) ~= dummy_conditions.num_T_equilibrium) || (min(size(dummy_conditions.Ef_fixed_mu_guesses))~=dummy_conditions.num_fixed_elements + 1)
+        error('If the conditions.Ef_fixed_mu_guesses field is present, it must have same number of rows as T_equilibrium and columns as num_fixed_elements + 1 and all be non-empty');
+    elseif (max(size(dummy_conditions.Ef_fixed_mu_guesses)) == dummy_conditions.num_T_equilibrium) && (min(size(dummy_conditions.Ef_fixed_mu_guesses))==dummy_conditions.num_fixed_elements+1)
+        disp('Ef_fixed_mu_guesses have been supplied.  It is recommended to use this only if you really need to override the automatic guess generation and temperature dependent solution following...')
+    else
+        error('something strange about the supplied conditions.Ef_fixed_mu_guesses')
+    end
+end
 
 
 
@@ -56,35 +75,41 @@ disp('as of now, T dependences for mu and band parameters are being used.  Must 
 
 
 %% start the main loop over temperatures
-for i1 = 1:numel(conditions.T_equilibrium)  %this instance needs to call back to the original conditions variable that holds the T vector
+for i1 = 1:Tloop_conditions.num_T_equilibrium  
 
-    Tloop_conditions.T_equilibrium = conditions.T_equilibrium(i1);  % each time through the T loop, set the right values
-    Tloop_conditions.kBT_equilibrium = conditions.kBT_equilibrium(i1);
+    Tloop_conditions.T_equilibrium = dummy_conditions.T_equilibrium(i1);  % each time through the T loop, set the values of T_equilibrium
+    Tloop_conditions.kBT_equilibrium = dummy_conditions.kBT_equilibrium(i1);
+    Tloop_conditions.num_T_equilibrium = 1;
     disp(strcat('Starting calc for T=',num2str(Tloop_conditions.T_equilibrium),'K'))  % call out the start of calc for each T
 
     % set the mu values for the current temperature.
-    Tloop_conditions.mu = conditions.muT_equilibrium(i1,:);  % the mu values set here will be overwritten (ignored) for fixed elements as needed further down in the code
+    Tloop_conditions.muT_equilibrium = dummy_conditions.muT_equilibrium(i1,:);  % the mu values set here will be overwritten (ignored) for fixed elements as needed further down in the code
+
+    % if Ef_fixed_mu_guesses are supplied in the conditions variable
+    if strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'On')
+         Tloop_conditions.Ef_fixed_mu_guesses = dummy_conditions.Ef_fixed_mu_guesses(i1,:);  % set the values to the i1'st row of the array
+    end
 
     % Handle set up the ability to specify fixed defect concentrations that
     % vary vs T
-    if strcmp(conditions.T_dep_fixed_defect_flag,'On')
-        if size(conditions.fixed_defects_concentrations,1)==numel(conditions.T_equilibrium)
-            Tloop_conditions.fixed_defects_concentrations = conditions.fixed_defects_concentrations(i1,:);          % take the i1 row of the fixed defects variable from the original conditions file and assign that row in the Tloop_conditions
-            Tloop_conditions.fixed_defects_concentrations = Tloop_conditions.fixed_defects_concentrations';  % rotate this to a column vector (doing it in 2 steps to make it obvious we did it)
+    if strcmp(dummy_conditions.T_dep_fixed_defect_flag,'On')
+        if size(dummy_conditions.fixed_defects_concentrations,1)==Tloop_conditions.num_T_equilibrium
+            Tloop_conditions.fixed_defects_concentrations = dummy_conditions.fixed_defects_concentrations(i1,:);          % take the i1 row of the fixed defects variable from the original conditions file and assign that row in the Tloop_conditions
+            Tloop_conditions.fixed_defects_concentrations = dummy_conditions.fixed_defects_concentrations';  % rotate this to a column vector (doing it in 2 steps to make it obvious we did it)
         else
             error('If T_dep_fixed_defect_flag is ON, then conditions.fixed_defect_concentrations has to be a vector with an entry for each T')
         end
-    elseif strcmp(conditions.T_dep_fixed_defect_flag,'Off')
-        if size(conditions.fixed_defects_concentrations,2)~=1
+    elseif strcmp(dummy_conditions.T_dep_fixed_defect_flag,'Off')
+        if size(dummy_conditions.fixed_defects_concentrations,2)~=1
             error('If T_dep_fixed_defect_flag is OFF, then conditions.fixed_defect_concentrations has to be a single value (scalar) appropriate for all temperatures')
         end
     end
 
     % handle T dependent dH values here
-    %     elseif strcmp(conditions.T_dep_dH,'On')
-    %         Tloop_defects.dH = defects.dHoT(i1,:);
+    %     if strcmp(dummy_conditions.T_dep_dH,'On')
+    %         Tloop_defects.dH = dummy_defects.dHoT(i1,:);
     %
-    %     elseif strcmp(conditions.T_dep_dH,'Off')
+    %     elseif strcmp(dummy_conditions.T_dep_dH,'Off')
     %         %% do nothing different
     %     else
     %         error('T dependent fixed defects and or T dependent dHo flags must be on or off')
@@ -92,18 +117,18 @@ for i1 = 1:numel(conditions.T_equilibrium)  %this instance needs to call back to
     %
 
     % Handle T dependent Nc, Nv, and band edges
-    if strcmp(conditions.T_dep_bands_flag,'On')
-        Tloop_conditions.Eg = conditions.EgT_equilibrium(i1);  % the RHS of these calls need to call into original conditions variable (in case replace all is used by accident)
-        Tloop_conditions.Ec = conditions.EcT_equilibrium(i1);
-        Tloop_conditions.Ev = conditions.EvT_equilibrium(i1);
-        Tloop_conditions.Nc = conditions.NcT_equilibrium(i1);
-        Tloop_conditions.Nv = conditions.NvT_equilibrium(i1);
-    elseif strcmp(conditions.T_dep_bands_flag,'Off')
-        Tloop_conditions.Eg = conditions.EgRef;
-        Tloop_conditions.Ec = conditions.EcRef;
+    if strcmp(dummy_conditions.T_dep_bands_flag,'On')
+        Tloop_conditions.Eg = dummy_conditions.EgT_equilibrium(i1);  % the RHS of these calls need to call into original conditions variable (in case replace all is used by accident)
+        Tloop_conditions.Ec = dummy_conditions.EcT_equilibrium(i1);
+        Tloop_conditions.Ev = dummy_conditions.EvT_equilibrium(i1);
+        Tloop_conditions.Nc = dummy_conditions.NcT_equilibrium(i1);
+        Tloop_conditions.Nv = dummy_conditions.NvT_equilibrium(i1);
+    elseif strcmp(dummy_conditions.T_dep_bands_flag,'Off')
+        Tloop_conditions.Eg = dummy_conditions.EgRef;
+        Tloop_conditions.Ec = dummy_conditions.EcRef;
         Tloop_conditions.Ev = 0;
-        Tloop_conditions.Nc = conditions.NcRef;
-        Tloop_conditions.Nv = conditions.NvRef;
+        Tloop_conditions.Nc = dummy_conditions.NcRef;
+        Tloop_conditions.Nv = dummy_conditions.NvRef;
     else
         error('T dependent band parameters must be ON or OFF')
     end
@@ -113,35 +138,37 @@ for i1 = 1:numel(conditions.T_equilibrium)  %this instance needs to call back to
     %% run the main calculation according to the method (method won't change vs T)  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     if Tloop_conditions.calc_method==1 || Tloop_conditions.calc_method ==2  %% These are cases with no elements frozen. 1 is no defects frozen, 2 is some defects frozen.  We get the mu values from the conditions directly
-
-
-        %% options for the fzero routine - can send these in with conditions variable in future
+        %% options for the fzero routine (now user supplies these in the conditions variable
         % fzero_options = optimset('PlotFcns','optimplotx','MaxFunEvals',1e6,'MaxIter',500,'TolX',1e-4,'TolFun',1e-4);
         % fzero_options = optimset('PlotFcns','optimplotfval','MaxFunEvals',1e6,'MaxIter',5000,'TolX',1e-4,'TolFun',1e-4);
         % fzero_options = optimset('PlotFcns','optimplotfval','MaxFunEvals',1e6,'MaxIter',500,'TolX',5e-3,'TolFun',1e-4);
 
-
         disp('Calculation Method 1 or 2 running please be patient....')
-        if i1==1
-            disp('Starting grid search of Ef to get close to first solution')
-            EF_guess = EF_Guess12(Tloop_conditions);   % get a guess for EF close to minimum
-            disp('Found guess for first T, passing it off to fzero')
-        elseif i1==2
-            EF_guess = EF_from_last_T;
-            disp('Using solution from prior temperature as guess for solution - make sure to space T values close enough for continuity')
-        elseif i1>=3
-            % this next line needs to call back to the original conditions
-            % variable to have the full list of T values available
-            EF_guess = EF_from_last_T + 0.5*(Tloop_conditions.T_equilibrium - last_T)*(EF_from_last_T - EF_from_2nd_last_T)/(last_T - second_last_T);
-            disp('Using avg of prior solution and 1st order Taylor expansion as guess...')
+
+        if strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'Off')
+            if i1==1
+                disp('Starting grid search of Ef to get close to first solution')
+                EF_guess = EF_Guess12(Tloop_conditions);   % get a guess for EF close to minimum
+                disp('Found guess for first T, passing it off to fzero')
+            elseif i1==2
+                EF_guess = EF_from_last_T;
+                disp('Using solution from prior temperature as guess for solution - make sure to space T values close enough for continuity')
+            elseif i1>=3
+                EF_guess = EF_from_last_T + 0.5*(Tloop_conditions.T_equilibrium - last_T)*(EF_from_last_T - EF_from_2nd_last_T)/(last_T - second_last_T);
+                disp('Using avg of prior solution and 1st order Taylor expansion as guess...')
+            end
+        elseif strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'On')
+            EF_guess = Tloop_conditions.Ef_mu_guuesses;
+        else
+            error('problem with Ef_fixed_mu_guesses - it exists but something wrong')
         end
 
         EF_out(i1) = fzero(@Charge_Balance12,EF_guess);
-        [n_out(i1), p_out(i1)] = Carrier_Concentrations(EF_out(i1));  %%% carriers
-        EF_full_mu_vec = [EF_out(i1) Tloop_conditions.mu];   % create the full EF_mu_vec taking in the fixed mu values
+        [n_out(i1), p_out(i1), sth1_out(i1), sth2_out(i1)] = Carrier_Concentrations(EF_out(i1));  %%% carriers
+        EF_full_mu_vec = [EF_out(i1) Tloop_conditions.muT_equilibrium];   % create the full EF_mu_vec taking in the fixed mu values
         N_charge_states_out(i1,:) = Chargestate_Concentrations(EF_full_mu_vec);  % compute the chargestate and carrier concentrations from the full EF_mu_vec
         charge_bal_err_out(i1) = Charge_Balance12(EF_out(i1));   % compute the net charge just to check final answers
-        mu_out(i1,:) = Tloop_conditions.mu;
+        mu_out(i1,:) = Tloop_conditions.muT_equilibrium;
 
         if i1>=2
             EF_from_2nd_last_T = EF_from_last_T;
@@ -156,87 +183,108 @@ for i1 = 1:numel(conditions.T_equilibrium)  %this instance needs to call back to
         end
 
 
+
     elseif Tloop_conditions.calc_method==3 || Tloop_conditions.calc_method==4 %% These are the cases where some elements are frozen.  3 is only elements frozen, 4 is elements and defects frozen
         disp('Calculation Method 3 or 4 running please be patient....')
         disp('WARNING!!!: Remember, when element concentrations are fixed, it is possible that the desired solution is impossible to find within the limits of mu the user specified for each fixed element.  So check the results carefully and spend some time bracketing the solution by hand.  Remember that only complexes couple impurity elements together so you can vary one mu at a time for the most part. ')
 
-        if strcmp(conditions.search_method_flag,'particleswarm_pattern') || strcmp(conditions.search_method_flag,'particleswarm_pattern_simplex')
+        if strcmp(Tloop_conditions.search_method_flag,'particleswarm_pattern') || strcmp(Tloop_conditions.search_method_flag,'particleswarm_pattern_simplex')
             nvars = Tloop_conditions.num_fixed_elements + 1;
-            iter_lim = Tloop_conditions.fixed_element_swarm_iterlimit_base*nvars;
-            stall_lim = Tloop_conditions.fixed_element_swarm_stall_lim;
-            
+            iter_lim = Tloop_conditions.fixed_elements_swarm_iterlimit_base*nvars;
+            stall_lim = Tloop_conditions.fixed_elements_swarm_stall_lim;
+            display_int = Tloop_conditions.fixed_elements_swarm_display_int;
+
             if i1 == 1
                 EF_min = Tloop_conditions.Ev - 5*Tloop_conditions.kBT_equilibrium;
                 EF_max = Tloop_conditions.Ec + 5*Tloop_conditions.kBT_equilibrium;
                 lb = [EF_min; Tloop_conditions.fixed_elements_mu_ranges(Tloop_conditions.indices_of_fixed_elements,1)];
                 ub = [EF_max; Tloop_conditions.fixed_elements_mu_ranges(Tloop_conditions.indices_of_fixed_elements,2)];
-                particles_per_fixed_mu = (ub-lb) / Tloop_conditions.kBT_equilibrium;
+                particles_per_fixed_mu = Tloop_conditions.fixed_elements_swarm1_fine_factor * (ub-lb) / Tloop_conditions.kBT_equilibrium;
                 grid_product = prod(particles_per_fixed_mu);  % number of points needed to fill the search hypervolume spaced kBT apart
-                swarmsize1 = ceil(min(Tloop_conditions.fixed_element_swarm1_max_size, grid_product^((nvars-1)/nvars))); % initiate a very large swarm to densely sample the space.  the idea is that you want to scale better than the dimensionality of the space being searched
-                Tloop_conditions.ps_options1 = optimoptions('particleswarm','SwarmSize',swarmsize1,'Display','iter','ObjectiveLimit',1e3,'MaxIterations',iter_lim,'MaxStallIterations',stall_lim,'HybridFcn', @patternsearch);
-                tic
-                EF_fixed_mu_vec_sol = particleswarm(@Total_Balance34,nvars,lb,ub,Tloop_conditions.ps_options1);
-                if strcmp(conditions.search_method_flag,'particleswarm_pattern_simplex')
-                    fminsearch_options = optimset('MaxFunEvals',10000,'MaxIter',5000,'TolX',1e-6,'TolFun',1e-6);  % may need to tune these settings
+                swarmsize1 = ceil( max(Tloop_conditions.fixed_elements_swarm1_min_size, min(Tloop_conditions.fixed_elements_swarm1_max_size, grid_product^((nvars-1)/nvars)))); % initiate a very large swarm to densely sample the space.  the idea is that you want to scale better than the dimensionality of the space being searched
+                if strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'Off')
+                    Tloop_conditions.swarm_options1 = optimoptions('particleswarm','SwarmSize',swarmsize1,'Display','iter','DisplayInterval',display_int,'ObjectiveLimit',Tloop_conditions.fixed_elements_swarm1_ObjectiveLimit,'MaxIterations',iter_lim,'MaxStallIterations',stall_lim,'HybridFcn', @patternsearch);
+                elseif strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'On')
+                    Tloop_conditions.swarm_options1 = optimoptions('particleswarm','InitialPoints',Tloop_conditions.Ef_fixed_mu_guesses(2:end,:),'SwarmSize',swarmsize1,'Display','iter','DisplayInterval',display_int,'ObjectiveLimit',Tloop_conditions.fixed_elements_swarm1_ObjectiveLimit,'MaxIterations',iter_lim,'MaxStallIterations',stall_lim,'HybridFcn', @patternsearch);
+                else
+                    error('looks like something contradictory with Ef_fixed_mu_guesses being supplied but no valid value provided?')
+                end
+                EF_fixed_mu_vec_sol = particleswarm(@Total_Balance34,nvars,lb,ub,Tloop_conditions.swarm_options1);
+                if strcmp(Tloop_conditions.search_method_flag,'particleswarm_pattern_simplex')
+                    fminsearch_options = optimset('MaxFunEvals',Tloop_conditions.fixed_elements_fmin_MaxFunEvals,'MaxIter',Tloop_conditions.fixed_elements_fmin_MaxIter,'TolX',Tloop_conditions.fixed_elements_fmin_TolX,'TolFun',Tloop_conditions.fixed_elements_fmin_TolFun);  % may need to tune these settings
                     EF_fixed_mu_vec_sol = fminsearch(@Total_Balance34,EF_fixed_mu_vec_sol, fminsearch_options);
                 end
-                guess_time = toc;
+
             elseif i1>=2
-                lb = EF_fixed_mu_from_last_T - Tloop_conditions.fixed_element_swarm2_search_band_kB*Tloop_conditions.kBT_equilibrium;
-                ub = EF_fixed_mu_from_last_T + Tloop_conditions.fixed_element_swarm2_search_band_kB*Tloop_conditions.kBT_equilibrium;
-                particles_per_fixed_mu = 2*Tloop_conditions.fixed_element_swarm2_search_band_kB;
+                lb = EF_fixed_mu_from_last_T - Tloop_conditions.fixed_elements_swarm2_search_band_kB*Tloop_conditions.kBT_equilibrium;
+                ub = EF_fixed_mu_from_last_T + Tloop_conditions.fixed_elements_swarm2_search_band_kB*Tloop_conditions.kBT_equilibrium;
+                particles_per_fixed_mu = Tloop_conditions.fixed_elements_swarm2_fine_factor*Tloop_conditions.fixed_elements_swarm2_search_band_kB;
                 grid_product = prod(particles_per_fixed_mu);  % number of points needed to fill the search hypervolume spaced kBT apart
-                swarmsize2 = ceil(max(Tloop_conditions.fixed_element_swarm2_min_size, grid_product^((nvars-1)/nvars))); % initiate a very large swarm to densely sample the space.  the idea is that you want to scale better than the dimensionality of the space being searched
-                Tloop_conditions.ps_options2 = optimoptions('particleswarm','SwarmSize',swarmsize2,'Display','iter','ObjectiveLimit',1e3,'MaxIterations',iter_lim,'MaxStallIterations',stall_lim,'HybridFcn', @patternsearch);
-                tic
-                EF_fixed_mu_vec_sol = particleswarm(@Total_Balance34,nvars,lb,ub,Tloop_conditions.ps_options2);
-                if strcmp(conditions.search_method_flag,'particleswarm_pattern_simplex')
-                    fminsearch_options = optimset('MaxFunEvals',10000,'MaxIter',500,'TolX',1e-6,'TolFun',1e-6);  % may need to tune these settings
+                swarmsize2 = ceil(max(Tloop_conditions.fixed_elements_swarm2_min_size, min(Tloop_conditions.fixed_elements_swarm2_max_size, grid_product^((nvars-1)/nvars)))); % initiate a very large swarm to densely sample the space.  the idea is that you want to scale better than the dimensionality of the space being searched
+                if strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'Off')
+                    Tloop_conditions.swarm_options2 = optimoptions('particleswarm','SwarmSize',swarmsize2,'Display','iter','DisplayInterval',display_int,'ObjectiveLimit',Tloop_conditions.fixed_elements_swarm2_ObjectiveLimit,'MaxIterations',iter_lim,'MaxStallIterations',stall_lim,'HybridFcn', @patternsearch);
+                    
+                elseif strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'On')
+                    Tloop_conditions.swarm_options2 = optimoptions('particleswarm','InitialPoints',Tloop_conditions.Ef_fixed_mu_guesses(2:end,:),'SwarmSize',swarmsize1,'Display','iter','DisplayInterval',display_int,'ObjectiveLimit',Tloop_conditions.fixed_elements_swarm2_ObjectiveLimit,'MaxIterations',iter_lim,'MaxStallIterations',stall_lim,'HybridFcn', @patternsearch);
+                else
+                    error('looks like something contradictory with Ef_fixed_mu_guesses being supplied but no valid value provided?')
+                end
+                EF_fixed_mu_vec_sol = particleswarm(@Total_Balance34,nvars,lb,ub,Tloop_conditions.swarm_options2);
+                if strcmp(Tloop_conditions.search_method_flag,'particleswarm_pattern_simplex')
+                    fminsearch_options = optimset('MaxFunEvals',Tloop_conditions.fixed_elements_fmin_MaxFunEvals,'MaxIter',Tloop_conditions.fixed_elements_fmin_MaxIter,'TolX',Tloop_conditions.fixed_elements_fmin_TolX,'TolFun',Tloop_conditions.fixed_elements_fmin_TolFun);  % may need to tune these settings
                     EF_fixed_mu_vec_sol = fminsearch(@Total_Balance34,EF_fixed_mu_vec_sol, fminsearch_options);
                 end
-                guess_time = toc;
             end
 
-        elseif strcmp(conditions.search_method_flag,'grid_fminsearch')
-            max_mu_range = max(abs(Tloop_conditions.fixed_elements_mu_ranges(:,2)-Tloop_conditions.fixed_elements_mu_ranges(:,1)));
-            start_kBT = conditions.T_equilibrium(1)*Tloop_conditions.kB;  %waht is kBT at the first temperature where we do the grid search?
-            fine_factor = 8;
-            Tloop_conditions.fixed_elements_mu_npoints = ceil(fine_factor*max_mu_range/start_kBT);
-            fminsearch_options = optimset('MaxFunEvals',Tloop_conditions.fixed_element_fmin_MaxFunEvals,'MaxIter',Tloop_conditions.fixed_element_fmin_MaxIter,'TolX',Tloop_conditions.fixed_element_fmin_TolX,'TolFun',Tloop_conditions.fixed_element_fmin_TolFun);  % may need to tune these settings
-            if i1==1
-                disp('Starting grid search over Ef and mu for fixed elements to get close to the solution for the first T.  Remember that the number of grid points to look at scales as num^dim+1 where dim is the number of fixed elements and the +1 is for Ef');
-                tic
-                EF_fixed_mu_guess = EF_Fixed_Mu_Guess34(Tloop_conditions); % get a guess for EF and the fixed mu values close to minimum using trial and error
-                guess_time = toc;
-                disp(strcat('Found guess for EF and mu values for fixed elements for first T in_',num2str(guess_time),'_sec.  Phew that took a while.  I need a shower, a beer, and to put my feet up.  Wait, you need me to keep going?  Fine if you insist, but you should try to bracket the solution better next time.'));
-            elseif i1==2
-                EF_fixed_mu_guess = EF_fixed_mu_from_last_T;
-                disp('Using solution from prior temperature as guess for solution - make sure to space T values close enough for continuity')
-            elseif i1>=3
-                % this next lines calls back to the original conditions
-                % variable so it can see all the temperatures
-                EF_fixed_mu_guess = EF_fixed_mu_from_last_T + 0.5*((EF_fixed_mu_from_last_T - EF_fixed_mu_from_2nd_last_T)/(conditions.T_equilibrium(i1-1) - conditions.T_equilibrium(i1-2)))*(conditions.T_equilibrium(i1) - conditions.T_equilibrium(i1-1));
-                disp('Using avg of prior solution and 1st order Taylor expansion as guess...')
+
+        elseif strcmp(Tloop_conditions.search_method_flag,'grid_fminsearch')
+            if strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'Off')
+                max_mu_range = max(abs(Tloop_conditions.fixed_elements_mu_ranges(:,2)-Tloop_conditions.fixed_elements_mu_ranges(:,1)));
+                start_kBT = dummy_conditions.kBT_equilibrium(1);  %this line calls back to the original conditions variable not Tloop one.  Otherwise the search grid would become really really fine
+                fine_factor = 8;
+                Tloop_conditions.fixed_elements_mu_npoints = ceil(fine_factor*max_mu_range/start_kBT);
+                fminsearch_options = optimset('MaxFunEvals',Tloop_conditions.fixed_elements_fmin_MaxFunEvals,'MaxIter',Tloop_conditions.fixed_elements_fmin_MaxIter,'TolX',Tloop_conditions.fixed_elements_fmin_TolX,'TolFun',Tloop_conditions.fixed_elements_fmin_TolFun);  % may need to tune these settings
+                if i1==1
+                    disp('Starting grid search over Ef and mu for fixed elements to get close to the solution for the first T.  Remember that the number of grid points to look at scales as num^dim+1 where dim is the number of fixed elements and the +1 is for Ef');
+                    tic
+                    EF_fixed_mu_guess = EF_Fixed_Mu_Guess34(Tloop_conditions); % get a guess for EF and the fixed mu values close to minimum using trial and error
+                    guess_time = toc;
+                    disp(strcat('Found guess for EF and mu values for fixed elements for first T in_',num2str(guess_time),'_sec.  Phew that took a while.  I need a shower, a beer, and to put my feet up.  Wait, you need me to keep going?  Fine if you insist, but you should try to bracket the solution better next time.'));
+                elseif i1==2
+                    EF_fixed_mu_guess = EF_fixed_mu_from_last_T;
+                    disp('Using solution from prior temperature as guess for solution - make sure to space T values close enough for continuity')
+                elseif i1>=3
+                    % this next lines calls back to the original conditions
+                    % variable so it can see all the temperatures
+                    EF_fixed_mu_guess = EF_fixed_mu_from_last_T + 0.5*((EF_fixed_mu_from_last_T - EF_fixed_mu_from_2nd_last_T)/(dummy_conditions.T_equilibrium(i1-1) - dummy_conditions.T_equilibrium(i1-2)))*(dummy_conditions.T_equilibrium(i1) - dummy_conditions.T_equilibrium(i1-1));
+                    disp('Using avg of prior solution and 1st order Taylor expansion as guess...')
+                end
+
+            elseif strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'On')
+                EF_fixed_mu_guess = Tloop_conditions.Ef_fixed_mu_guesses;
+            else
+                error('looks like something contradictory with Ef_fixed_mu_guesses being supplied but no valid value provided?')
             end
 
             % do the optimization using fminsearch
-            tic
-            [EF_fixed_mu_vec_sol,~,fminsearch_exit_flag] = fminsearch(@Total_Balance34,EF_fixed_mu_guess, fminsearch_options);  % up to here we deal with EF_fixed_mu_vec.  After the optimization we rebuild the whole EF_full_mu_vec
-            [EF_fixed_mu_vec_sol,~,fminsearch_exit_flag] = fminsearch(@Total_Balance34,EF_fixed_mu_vec_sol, fminsearch_options);
-            toc
-
+            % tic
+            [EF_fixed_mu_vec_sol,~,fminsearch_exit_flag] = fminsearch(@Total_Balance34, EF_fixed_mu_guess, fminsearch_options);  % up to here we deal with EF_fixed_mu_vec.  After the optimization we rebuild the whole EF_full_mu_vec
+            [EF_fixed_mu_vec_sol,~,fminsearch_exit_flag] = fminsearch(@Total_Balance34, EF_fixed_mu_vec_sol, fminsearch_options);
+            % toc
 
         else
             error('For case 3 & 4 calculations, search_method_flag must be one of the coded options')
         end
 
 
-        % these items here are executed for cases 3&4 using either solver option
+
+
+        % these items here are executed for cases 3&4 using any solver option
         disp(strcat('Found solution as__',num2str(EF_fixed_mu_vec_sol),'__for EF_fixed_mu_vec'))
         EF_full_mu_vec_sol = Expand_Fixed_Mu_Vec_To_Full_Mu_Vec(EF_fixed_mu_vec_sol);  % expand it out to the full EF_mu_vec
         EF_out(i1) = EF_full_mu_vec_sol(1);  % pick off the optimized EF value
         mu_out(i1,:) = EF_full_mu_vec_sol(2:end);
-        [n_out(i1), p_out(i1)]  = Carrier_Concentrations(EF_out(i1));  %%% carriers
+        [n_out(i1), p_out(i1), sth1_out(i1), sth2_out(i1)]  = Carrier_Concentrations(EF_out(i1));  %%% carriers
         N_charge_states_out(i1,:) = Chargestate_Concentrations(EF_full_mu_vec_sol);  %% chargestates
         charge_bal_err_out(i1) = Charge_Balance34(EF_fixed_mu_vec_sol);
         element_bal_err_out(i1) = sum(Fixed_Element_Balance34(EF_fixed_mu_vec_sol));
@@ -272,27 +320,39 @@ end % close the for loop over temperatures indexed by i1
 
 
 %%%%%%%%%% create final output strcutrues  %%%%%%%%%%%%%%%%%%%%%%%%
+%% now that we are out of the T loop we go back to dummy_conditions
 
 %% sum over chargstates in each defect to get the totals for each defect. Do this here at the end so the loop only runs one time %%
-for i3=1:defects.num_defects
-    index = defects.cs_ID==i3;
+for i3=1:dummy_defects.num_defects
+    index = dummy_defects.cs_ID==i3;
     N_defects_out(:,i3) = sum(N_charge_states_out(:,index),2);
 end
 
 
 %% build up the solution structure
-equilib_dark_sol.defect_names = defects.defect_names;
-equilib_dark_sol.chargestate_names = defects.chargestate_names;
-equilib_dark_sol.T_equilibrium = (conditions.T_equilibrium)';
-equilib_dark_sol.Nd = conditions.Nd*ones(numel(conditions.T_equilibrium),1);
-equilib_dark_sol.Na = conditions.Na*ones(numel(conditions.T_equilibrium),1);
+equilib_dark_sol.defect_names = dummy_defects.defect_names;
+equilib_dark_sol.chargestate_names = dummy_defects.chargestate_names;
+equilib_dark_sol.T_equilibrium = (dummy_conditions.T_equilibrium)';
+equilib_dark_sol.Nd = dummy_conditions.Nd*ones(numel(dummy_conditions.T_equilibrium),1);
+equilib_dark_sol.Na = dummy_conditions.Na*ones(numel(dummy_conditions.T_equilibrium),1);
 equilib_dark_sol.EFn = EF_out;   % planning ahead for light calcs
 equilib_dark_sol.EFp = EF_out;
 equilib_dark_sol.n = n_out;
 equilib_dark_sol.p = p_out;
+equilib_dark_sol.sth1 = sth1_out;
+equilib_dark_sol.sth2 = sth2_out;
 equilib_dark_sol.chargestates = N_charge_states_out;
 equilib_dark_sol.defects = N_defects_out;
-[equilib_dark_sol.Ga_O_stoich, equilib_dark_sol.elements(:,1), equilib_dark_sol.elements(:,2), equilib_dark_sol.elements(:,3), equilib_dark_sol.elements(:,4), equilib_dark_sol.elements(:,5), equilib_dark_sol.elements(:,6), equilib_dark_sol.elements(:,7), equilib_dark_sol.elements(:,8), equilib_dark_sol.elements(:,9), equilib_dark_sol.elements(:,10), equilib_dark_sol.elements(:,11), equilib_dark_sol.elements(:,12), equilib_dark_sol.elements(:,13), equilib_dark_sol.elements(:,14), equilib_dark_sol.elements(:,15), equilib_dark_sol.elements(:,16), equilib_dark_sol.elements(:,17)] =  Ga2O3_stoich(equilib_dark_sol, conditions, defects);
+
+if strcmp(dummy_conditions.stoich_flag,'Ga2O3') 
+    [equilib_dark_sol.Ga_O_stoich, equilib_dark_sol.element_totals] = Ga2O3_stoich(equilib_dark_sol, dummy_conditions, dummy_defects);
+elseif strcmp(dummy_conditions.stoich_flag,'CdTe') 
+    [equilib_dark_sol.Cd_Te_stoich, equilib_dark_sol.element_totals] = CdTe_stoich(equilib_dark_sol, dummy_conditions, dummy_defects);
+else
+    ('Must specify the function that computes stoichiometry for each material');
+end
+
+
 equilib_dark_sol.charge_bal_err = charge_bal_err_out;
 equilib_dark_sol.element_bal_err = element_bal_err_out;
 equilib_dark_sol.tot_bal_err = tot_bal_err_out;
@@ -306,54 +366,56 @@ equilib_dark_sol.mu = mu_out;
 
 %% nested subroutines - note these all share memory space with the main function ("end" for the main function comes after all of these subroutines are ended %%
 
-%% These functions have the conditions variable as input.  When actually calling these functions we want to call it with "Tloop_conditions" as input.  They are written with a dummy variable "local conditions" to differentiate the context
+%% These functions have the conditions variable as input, but in each one we make it a dummy name.  When actually calling these functions we want to call it with "Tloop_conditions" as input.  They are written with a dummy variable "local conditions" to differentiate the context
 
-    function [conditions_dummy] = Calc_Method(conditions_dummy)
+    function [CM_conditions] = Calc_Method(CM_conditions)
         %% check for valid imputs for fixed and open defects and elements
-        if max(size(conditions_dummy.fixed_defects))~=defects.num_defects  % check if each defect has a 1 or 0
+        if numel(CM_conditions.fixed_defects)~=dummy_defects.num_defects  % check if each defect has a 1 or 0
             error('Tloop_conditions.fixed_defects has to be same size as num_defects')
-        elseif max(size(conditions_dummy.fixed_elements))~=defects.numelements  % check that each element part of the calculation is listed
-            error('Tloop_conditions.fixed_elements has to be same size as # elements')
-        elseif sum(conditions_dummy.fixed_defects) ~= conditions_dummy.num_fixed_defects
+        elseif numel(CM_conditions.fixed_conc_flag)~=dummy_defects.numelements  % check that each element part of the calculation is listed
+            error('Tloop_conditions.fixed_conc_flag has to be same size as # elements')
+        elseif sum(CM_conditions.fixed_defects) ~= CM_conditions.num_fixed_defects
             error('Something wrong with number of fixed defects')
-        elseif sum(conditions_dummy.fixed_elements) ~= conditions_dummy.num_fixed_elements
+            
+        elseif sum(CM_conditions.fixed_conc_flag) ~= CM_conditions.num_fixed_elements
             error('Something wrong with number of fixed elements')
         end
 
         %% these logic checks figure out how calc will be done
-        if sum(conditions_dummy.fixed_defects)==0   % no defects fixed, all open
-            conditions_dummy.some_defects_fixed_flag = 0;
-            conditions_dummy.fixed_defects_index = [];
-            conditions_dummy.open_defects_index = ones(size(conditions_dummy.fixed_defects));
-            conditions_dummy.num_fixed_defects = 0;
-            conditions_dummy.num_open_defects = max(size(conditions_dummy.open_defects_index));
-        elseif sum(conditions_dummy.fixed_defects)~=0  %% some defects have fixed concentration
-            conditions_dummy.some_defects_fixed_flag = 1;
-            conditions_dummy.fixed_defects_index = find(conditions_dummy.fixed_defects==1);
-            conditions_dummy.open_defects_index = find(conditions_dummy.fixed_defects==0);
-            conditions_dummy.num_fixed_defects = max(size(conditions_dummy.fixed_defects_index));
-            conditions_dummy.num_open_defects = max(size(conditions_dummy.open_defects_index));
+        if sum(CM_conditions.fixed_defects)==0   % no defects fixed, all open
+            CM_conditions.some_defects_fixed_flag = 0;
+            CM_conditions.fixed_defects_index = [];
+            CM_conditions.num_fixed_defects = 0;
+            % CM_conditions.open_defects_index = ones(size(CM_conditions.fixed_defects));
+            % CM_conditions.num_open_defects = max(size(CM_conditions.open_defects_index));
+        elseif sum(CM_conditions.fixed_defects)~=0  %% some defects have fixed concentration
+            CM_conditions.some_defects_fixed_flag = 1;
+            CM_conditions.fixed_defects_index = find(CM_conditions.fixed_defects==1);
+            CM_conditions.num_fixed_defects = max(size(CM_conditions.fixed_defects_index));
+            % CM_conditions.open_defects_index = find(CM_conditions.fixed_defects==0);
+            % CM_conditions.num_open_defects = max(size(CM_conditions.open_defects_index));
         end
 
-        if sum(conditions_dummy.fixed_elements)==0   % no elements fixed, all open (mu set for all not concentration)
-            conditions_dummy.some_elements_fixed_flag = 0;
-            conditions_dummy.fixed_elements_index = [];
-            conditions_dummy.open_elements_index = ones(size(conditions_dummy.fixed_elements));
-        elseif sum(conditions_dummy.fixed_elements)~=0  %% at least one element concentration is set
-            conditions_dummy.some_elements_fixed_flag = 1;
-            conditions_dummy.fixed_elements_index = find(conditions_dummy.fixed_elements==1);
-            conditions_dummy.open_elements_index = find(conditions_dummy.fixed_elements==0);
-            conditions_dummy.num_fixed_elements = numel(conditions_dummy.fixed_elements_index);
+        if sum(CM_conditions.fixed_conc_flag)==0   % no elements fixed, all open (mu set for all not concentration)
+            CM_conditions.some_elements_fixed_flag = 0;
+            CM_conditions.fixed_elements_index = [];
+            CM_conditions.num_fixed_elements = 0;
+            CM_conditions.open_elements_index = ones(size(CM_conditions.fixed_conc_flag));
+        elseif sum(CM_conditions.fixed_conc_flag)~=0  %% at least one element concentration is set
+            CM_conditions.some_elements_fixed_flag = 1;
+            CM_conditions.fixed_elements_index = find(CM_conditions.fixed_conc_flag==1);
+            CM_conditions.num_fixed_elements = numel(CM_conditions.fixed_elements_index);
+            CM_conditions.open_elements_index = find(CM_conditions.fixed_conc_flag==0);
         end
 
-        if conditions_dummy.some_defects_fixed_flag==0 && conditions_dummy.some_elements_fixed_flag==0
-            conditions_dummy.calc_method = 1;
-        elseif conditions_dummy.some_defects_fixed_flag==1 && conditions_dummy.some_elements_fixed_flag==0
-            conditions_dummy.calc_method = 2;
-        elseif conditions_dummy.some_defects_fixed_flag==0 && conditions_dummy.some_elements_fixed_flag==1
-            conditions_dummy.calc_method = 3;
-        elseif conditions_dummy.some_defects_fixed_flag==1 && conditions_dummy.some_elements_fixed_flag==1
-            conditions_dummy.calc_method = 4;
+        if CM_conditions.some_defects_fixed_flag==0 && CM_conditions.some_elements_fixed_flag==0
+            CM_conditions.calc_method = 1;
+        elseif CM_conditions.some_defects_fixed_flag==1 && CM_conditions.some_elements_fixed_flag==0
+            CM_conditions.calc_method = 2;
+        elseif CM_conditions.some_defects_fixed_flag==0 && CM_conditions.some_elements_fixed_flag==1
+            CM_conditions.calc_method = 3;
+        elseif CM_conditions.some_defects_fixed_flag==1 && CM_conditions.some_elements_fixed_flag==1
+            CM_conditions.calc_method = 4;
         else
             error('defects and elements must be either fixed or open')
         end
@@ -362,7 +424,7 @@ equilib_dark_sol.mu = mu_out;
 
 
 
-    function [EF_guess12] = EF_Guess12(conditions_dummy)
+    function [EF_guess12] = EF_Guess12(EFG12_conditions)
         %%%% this will only be called for mthods 1 & 2. for methods 1&2,
         %%%% function that uses grid search to get an EF guess close to the
         %%%% charge balance solution.  It should return 1 value (old method
@@ -371,7 +433,7 @@ equilib_dark_sol.mu = mu_out;
         % keep kBT and Eg as local variables in this function by using
         % distinct aliases for the input arguments
 
-        [EF_grid] = EF_Grid_Maker(conditions_dummy);
+        [EF_grid] = EF_Grid_Maker(EFG12_conditions);
 
         nn = numel(EF_grid);
         errs = zeros(1,nn);
@@ -428,7 +490,7 @@ equilib_dark_sol.mu = mu_out;
 
 
 
-    function [EF_fixed_mu_guess34] = EF_Fixed_Mu_Guess34(conditions_dummy)
+    function [EF_fixed_mu_guess34] = EF_Fixed_Mu_Guess34(EFFMG34_conditions)
         % take in conditions variable and spit out a EF_fixed_mu_vec as a
         % guess.  Grid search the m dimensional space where m = number of
         % frozen elements.  Vctor length is m+1 for EF.  This guess is sent
@@ -443,10 +505,10 @@ equilib_dark_sol.mu = mu_out;
 
         % handle Ef first %% Set up the grid for Ef in same way as for
         % guess12
-        [EF_grid] = EF_Grid_Maker(conditions_dummy);
+        [EF_grid] = EF_Grid_Maker(EFFMG34_conditions);
 
         % create search grid for each frozen element
-        [mu_grid_holder] = Fixed_Mu_Ggrid_Maker(conditions_dummy);   % this creates a cell array with number of cells equal to the number of fixed elements.  In those cells are vectors of mu grids for each fixed element.
+        [mu_grid_holder] = Fixed_Mu_Ggrid_Maker(EFFMG34_conditions);   % this creates a cell array with number of cells equal to the number of fixed elements.  In those cells are vectors of mu grids for each fixed element.
 
         % start going through the cases for diffrent numbers of fixed
         % elements
@@ -457,10 +519,10 @@ equilib_dark_sol.mu = mu_out;
         % called a lot
 
 
-        switch conditions_dummy.num_fixed_elements
+        switch EFFMG34_conditions.num_fixed_elements
             case 1
 
-                %         if conditions_dummy.num_fixed_elements == 1
+                %         if EFFMG34_conditions.num_fixed_elements == 1
                 mu1_grid = cell2mat(mu_grid_holder(1));   % extract the first mu vec to search over and make it a vector
                 %                 diagnstics
                 %                 charge_holder = zeros(numel(EF_grid),numel(mu1_grid));
@@ -484,7 +546,7 @@ equilib_dark_sol.mu = mu_out;
                 end
 
             case 2
-                %         elseif conditions_dummy.num_fixed_elements == 2
+                %         elseif EFFMG34_conditions.num_fixed_elements == 2
                 mu1_grid = cell2mat(mu_grid_holder(1));
                 mu2_grid = cell2mat(mu_grid_holder(2));
                 num_grid_points = numel(EF_grid)*numel(mu1_grid)*numel(mu2_grid);
@@ -506,7 +568,7 @@ equilib_dark_sol.mu = mu_out;
                 end
 
             case 3
-                %         elseif conditions_dummy.num_fixed_elements == 3
+                %         elseif EFFMG34_conditions.num_fixed_elements == 3
                 mu1_grid = cell2mat(mu_grid_holder(1));
                 mu2_grid = cell2mat(mu_grid_holder(2));
                 mu3_grid = cell2mat(mu_grid_holder(3));
@@ -530,7 +592,7 @@ equilib_dark_sol.mu = mu_out;
                 end
 
             case 4
-                %         elseif conditions_dummy.num_fixed_elements == 4
+                %         elseif EFFMG34_conditions.num_fixed_elements == 4
                 mu1_grid = cell2mat(mu_grid_holder(1));
                 mu2_grid = cell2mat(mu_grid_holder(2));
                 mu3_grid = cell2mat(mu_grid_holder(3));
@@ -557,7 +619,7 @@ equilib_dark_sol.mu = mu_out;
                 end
 
             case 5
-                %         elseif conditions_dummy.num_fixed_elements == 5
+                %         elseif EFFMG34_conditions.num_fixed_elements == 5
                 mu1_grid = cell2mat(mu_grid_holder(1));
                 mu2_grid = cell2mat(mu_grid_holder(2));
                 mu3_grid = cell2mat(mu_grid_holder(3));
@@ -587,7 +649,7 @@ equilib_dark_sol.mu = mu_out;
                 end
 
             case 6
-                %         elseif conditions_dummy.num_fixed_elements == 6
+                %         elseif EFFMG34_conditions.num_fixed_elements == 6
                 mu1_grid = cell2mat(mu_grid_holder(1));
                 mu2_grid = cell2mat(mu_grid_holder(2));
                 mu3_grid = cell2mat(mu_grid_holder(3));
@@ -620,7 +682,7 @@ equilib_dark_sol.mu = mu_out;
                 end
 
             case 7
-                %         elseif conditions_dummy.num_fixed_elements == 7
+                %         elseif EFFMG34_conditions.num_fixed_elements == 7
                 mu1_grid = cell2mat(mu_grid_holder(1));
                 mu2_grid = cell2mat(mu_grid_holder(2));
                 mu3_grid = cell2mat(mu_grid_holder(3));
@@ -656,7 +718,7 @@ equilib_dark_sol.mu = mu_out;
                 end
 
             case 8
-                %         elseif conditions_dummy.num_fixed_elements == 8
+                %         elseif EFFMG34_conditions.num_fixed_elements == 8
                 mu1_grid = cell2mat(mu_grid_holder(1));
                 mu2_grid = cell2mat(mu_grid_holder(2));
                 mu3_grid = cell2mat(mu_grid_holder(3));
@@ -695,7 +757,7 @@ equilib_dark_sol.mu = mu_out;
                 end
 
             case 9
-                %         elseif conditions_dummy.num_fixed_elements == 9
+                %         elseif EFFMG34_conditions.num_fixed_elements == 9
                 mu1_grid = cell2mat(mu_grid_holder(1));
                 mu2_grid = cell2mat(mu_grid_holder(2));
                 mu3_grid = cell2mat(mu_grid_holder(3));
@@ -737,7 +799,7 @@ equilib_dark_sol.mu = mu_out;
                 end
 
             case 10
-                %         elseif conditions_dummy.num_fixed_elements == 10
+                %         elseif EFFMG34_conditions.num_fixed_elements == 10
                 mu1_grid = cell2mat(mu_grid_holder(1));
                 mu2_grid = cell2mat(mu_grid_holder(2));
                 mu3_grid = cell2mat(mu_grid_holder(3));
@@ -804,7 +866,7 @@ equilib_dark_sol.mu = mu_out;
 
 
 
-    function [fixed_mu_grids]  = Fixed_Mu_Ggrid_Maker(conditions_dummy)
+    function [fixed_mu_grids]  = Fixed_Mu_Ggrid_Maker(FMGM_conditions)
         % this gets called only for methods 3 &4, and gets called before
         % anything else function to create an array holding vectors of mu
         % values for each frozen element (and no others).  The fixed
@@ -814,41 +876,42 @@ equilib_dark_sol.mu = mu_out;
         %% future possible improvement: can just make holder a matrix directly rather than making a cell array here and turning it back into a vector when used in guess34
         %% also could move this task into the script instead and include this object in the conditions variable sent.  In that case it would be better to have it as a cell array as then some entries can be nulls rathet than zeros required if this is a matrix
 
-        fixed_mu_grids = cell(1,conditions_dummy.num_fixed_elements);  % create empty cell array with enough entries to hold a vector of mu values for each fixed element
+        fixed_mu_grids = cell(1,FMGM_conditions.num_fixed_elements);  % create empty cell array with enough entries to hold a vector of mu values for each fixed element
         counter = 1;
-        for i16 = conditions_dummy.indices_of_fixed_elements  % loop over the i16 values indexing the frozen elements  This way only executes the loop for the frozen ones, skipping the non-frozen ones so gets rid of need to insert if elseif inside the for loop.  This will only be called in methods 3 and 4 so no need to worry about methods 1&2 when none are frozen
-            mu_inc = (conditions_dummy.fixed_elements_mu_ranges(i16,2)-conditions_dummy.fixed_elements_mu_ranges(i16,1))/conditions_dummy.fixed_elements_mu_npoints; % decide up front that you will divide the rnage into a fixed number of increments
-            fixed_mu_grids{counter} = conditions_dummy.fixed_elements_mu_ranges(i16,1) : mu_inc : conditions_dummy.fixed_elements_mu_ranges(i16,2);
+        for i16 = FMGM_conditions.indices_of_fixed_elements  % loop over the i16 values indexing the frozen elements  This way only executes the loop for the frozen ones, skipping the non-frozen ones so gets rid of need to insert if elseif inside the for loop.  This will only be called in methods 3 and 4 so no need to worry about methods 1&2 when none are frozen
+            mu_inc = (FMGM_conditions.fixed_elements_mu_ranges(i16,2)-FMGM_conditions.fixed_elements_mu_ranges(i16,1))/FMGM_conditions.fixed_elements_mu_npoints; % decide up front that you will divide the rnage into a fixed number of increments
+            fixed_mu_grids{counter} = FMGM_conditions.fixed_elements_mu_ranges(i16,1) : mu_inc : FMGM_conditions.fixed_elements_mu_ranges(i16,2);
             counter = counter + 1;
         end
     end
 
 
 
-    function [EF_grid] = EF_Grid_Maker(conditions_dummy)
+    function [EF_grid] = EF_Grid_Maker(EFGM_conditions)
         % Set up a grid of EF values the grid.  Using interval 1/2 of kBT
         % guarantees you can't miss the solution whcih should be thus
         % within kB/2 of the guess
-        EF_inc = conditions_dummy.kBT_equilibrium/2;
-        EF_grid = conditions_dummy.Ev-10*EF_inc : EF_inc : ceil((conditions_dummy.Ec-conditions_dummy.Ev)/EF_inc)*EF_inc + 10*EF_inc;  % this makes a grid to check over the range -5kBT to Eg+5kBT, the ceil() command takes care of casee where Ec-Ev/interval is not an integer
+        EF_inc = EFGM_conditions.kBT_equilibrium/2;
+        EF_grid = EFGM_conditions.Ev-10*EF_inc : EF_inc : ceil((EFGM_conditions.Ec-EFGM_conditions.Ev)/EF_inc)*EF_inc + 10*EF_inc;  % this makes a grid to check over the range -5kBT to Eg+5kBT, the ceil() command takes care of casee where Ec-Ev/interval is not an integer
     end
 
-%% end functions called with Tloop_conditions
+%% end functions called with dummy names for conditions
 
 
 
 %% These functions are involved in calculating the numbers of things.  Some take in reduced and others full EF_mu_vecs holding just the fixed mu's or the full list of mu's respectively
+% these are all used inside the main Tloop so should be calling Tloop_conditions
 
     function [charge_bal12] = Charge_Balance12(EF_dummy)
         % function to calculate signed charge balance for methods 1 and 2
         % for speedup.  Same as the 34 version but stripped all the fixed
         % mu stuff out.  This gets called a lot so dont put any logic
         % checks inside - do checking outside before calling this
-        [n,p] = Carrier_Concentrations(EF_dummy);  %deal with carriers first
-        EF_full_mu_vec_dummy = [EF_dummy Tloop_conditions.mu];   % create the full EF_mu_vec
+        [n, p, sth1, sth2] = Carrier_Concentrations(EF_dummy);  %deal with carriers first
+        EF_full_mu_vec_dummy = [EF_dummy Tloop_conditions.muT_equilibrium];   % create the full EF_mu_vec
         [N_chargestates] = Chargestate_Concentrations(EF_full_mu_vec_dummy);
-        charge_bal12 = sum(defects.cs_charge.* N_chargestates') + p - n + Tloop_conditions.Nd - Tloop_conditions.Na  ;              % absolute signed charge bal comes out signed +/-
-        % charge_bal12 = (sum(defects.cs_charge.* N_chargestates') + p - n + Tloop_conditions.Nd - Tloop_conditions.Na)/sqrt(Tloop_conditions.Nc*Tloop_conditions.Nv)  ;  % scaled to ni2 sort of.   comes out signed +/-
+        charge_bal12 = sum(dummy_defects.cs_charge.* N_chargestates') + p + sth1 + sth2 - n + Tloop_conditions.Nd - Tloop_conditions.Na  ;              % absolute signed charge bal comes out signed +/-
+        % charge_bal12 = (sum(dummy_defects.cs_charge.* N_chargestates') + p - n + Tloop_conditions.Nd - Tloop_conditions.Na)/sqrt(Tloop_conditions.Nc*Tloop_conditions.Nv)  ;  % scaled to ni2 sort of.   comes out signed +/-
     end %end charge_bal12
 
 
@@ -857,32 +920,42 @@ equilib_dark_sol.mu = mu_out;
         % function to calculate signed charge balance.  This gets called a
         % lot so dont put any logic checks inside - do checking outside
         % before calling this
-        [n,p] = Carrier_Concentrations(EF_fixed_mu_vec_dummy(1));  %deal with carriers first
+        [n, p, sth1, sth2] = Carrier_Concentrations(EF_fixed_mu_vec_dummy(1));  % deal with carriers first
         % now deal with defects.  Need to take in reduced mu vec and expand
         % out to the full one before sending to chargestate calculation
         [EF_full_mu_vec_dummy] = Expand_Fixed_Mu_Vec_To_Full_Mu_Vec(EF_fixed_mu_vec_dummy);
         [N_chargestates] = Chargestate_Concentrations(EF_full_mu_vec_dummy);  % send this full vec to calculate the chargestates
-        charge_bal34 = sum(defects.cs_charge.* N_chargestates') + p - n + Tloop_conditions.Nd - Tloop_conditions.Na;   % absolute signed charge bal
-        % charge_bal34 = (sum(defects.cs_charge.* N_chargestates') + p - n + Tloop_conditions.Nd - Tloop_conditions.Na)/sqrt(Tloop_conditions.Nc*Tloop_conditions.Nv);  % relative comes out signed +/-
+        charge_bal34 = sum(dummy_defects.cs_charge.* N_chargestates') + p + sth1 + sth2 - n + Tloop_conditions.Nd - Tloop_conditions.Na;   % absolute signed charge bal
+        % charge_bal34 = (sum(dummy_defects.cs_charge.* N_chargestates') + p - n + Tloop_conditions.Nd - Tloop_conditions.Na)/sqrt(Tloop_conditions.Nc*Tloop_conditions.Nv);  % relative comes out signed +/-
     end %end charge_bal34
 
 
 
-    function [n,p] = Carrier_Concentrations(EF_dummy)
+    function [n, p, sth1, sth2] = Carrier_Concentrations(EF_dummy)
         %%%% function to compute n and p.  Input must be EF only (scalar
         %%%% not vector with mu's attached)  %%%%%%%%%%%%
         etaCB = (EF_dummy - Tloop_conditions.Ec)/Tloop_conditions.kBT_equilibrium;
         etaVB = (EF_dummy - Tloop_conditions.Ev)/Tloop_conditions.kBT_equilibrium;   % this looks wrong (not symmetric compared to CB case) but it is right. Direction of integration and sign on EF-Ev are both swapped.
+        etaSTH1 = (EF_dummy - (Tloop_conditions.Ev + Tloop_conditions.E_relax_sth1) )/Tloop_conditions.kBT_equilibrium;
+        etaSTH2 = (EF_dummy - (Tloop_conditions.Ev + Tloop_conditions.E_relax_sth2) )/Tloop_conditions.kBT_equilibrium;
 
         if strcmp(Tloop_conditions.Boltz_or_FD_flag,'FD')            % use Fermi-Dirac integrals so degenerate conditions handled correctly
-            [n,~] = n_Fermi_Dirac(etaCB,Tloop_conditions.Nc);
-            [p,~] = n_Fermi_Dirac(-etaVB,Tloop_conditions.Nv);
+            n = n_Fermi_Dirac(etaCB, Tloop_conditions.Nc);
+            p = n_Fermi_Dirac(-etaVB, Tloop_conditions.Nv);
+            sth1 = Tloop_conditions.sth_flag * n_Fermi_Dirac(-etaSTH1, Tloop_conditions.num_sites(3));
+            sth2 = Tloop_conditions.sth_flag * n_Fermi_Dirac(-etaSTH2, Tloop_conditions.num_sites(4));
         elseif strcmp(Tloop_conditions.Boltz_or_FD_flag,'Boltz')              % %     use just Boltzmann approx
-            n = Tloop_conditions.Nc*exp(etaCB);   % these are right (sign swap).  Boltzmann factors should end up <1 when EF is in gap
-            p = Tloop_conditions.Nv*exp(-etaVB);
+            n = Tloop_conditions.Nc * exp(etaCB);   % these are right (sign swap).  Boltzmann factors should end up <1 when EF is in gap
+            p = Tloop_conditions.Nv * exp(-etaVB);
+            sth1 = Tloop_conditions.sth_flag * Tloop_conditions.num_sites(3) * exp(-etaSTH1);
+            sth2 = Tloop_conditions.sth_flag * Tloop_conditions.num_sites(4) * exp(-etaSTH2);
         else
             error('Boltz_or_FD_flag must be Boltz or FD')
         end
+        % 
+        % % method 1 of STHs assuming only way to make them is going through
+        % % the free holes first, so prefactor is Nv.  
+        % sth = p * Tloop_conditions.sth_flag * exp(Tloop_conditions.E_relax_sth/Tloop_conditions.kBT_equilibrium);
     end
 
 
@@ -905,8 +978,8 @@ equilib_dark_sol.mu = mu_out;
         %         element_bal34 = zeros(size(Tloop_conditions.num_fixed_elements));  % initialize as all zeros
         [EF_full_mu_vec_dummy] = Expand_Fixed_Mu_Vec_To_Full_Mu_Vec(EF_fixed_mu_vec_dummy);
         [N_chargestates] = Chargestate_Concentrations(EF_full_mu_vec_dummy);  % send this full vec to calculate the chargestates
-        %         fixed_element_bal34_vec =  ((((defects.cs_dm')*N_chargestates')' - Tloop_conditions.fixed_elements_concentrations).*Tloop_conditions.fixed_elements)./Tloop_conditions.fixed_elements_concentrations;   % have to rotate and reshape the arrays a few times to get sizes and shapes right.  Then .* by the fixed element mask to isolate only the target elements - for example a substitutional defect also produces a missing host atom so dont want to include those. This masking is applied
-        fixed_element_bal34_vec =  (((defects.cs_dm')*N_chargestates')' - Tloop_conditions.fixed_elements_concentrations).*Tloop_conditions.fixed_elements;   % have to rotate and reshape the arrays a few times to get sizes and shapes right.  Then .* by the fixed element mask to isolate only the target elements - for example a substitutional defect also produces a missing host atom so dont want to include those. This masking is applied
+        %         fixed_element_bal34_vec =  ((((dummy_defects.cs_dm')*N_chargestates')' - Tloop_conditions.fixed_conc_values).*Tloop_conditions.fixed_conc_flag)./Tloop_conditions.fixed_conc_values;   % have to rotate and reshape the arrays a few times to get sizes and shapes right.  Then .* by the fixed element mask to isolate only the target elements - for example a substitutional defect also produces a missing host atom so dont want to include those. This masking is applied
+        fixed_element_bal34_vec =  (((dummy_defects.cs_dm')*N_chargestates')' - Tloop_conditions.fixed_conc_values).*Tloop_conditions.fixed_conc_flag;   % have to rotate and reshape the arrays a few times to get sizes and shapes right.  Then .* by the fixed element mask to isolate only the target elements - for example a substitutional defect also produces a missing host atom so dont want to include those. This masking is applied
     end % end element bal34
 
 
@@ -922,20 +995,22 @@ equilib_dark_sol.mu = mu_out;
 
         if Tloop_conditions.calc_method==1 || Tloop_conditions.calc_method==3
 
-            if strcmp(Tloop_conditions.vib_ent_flag,'On')
-                dG = defects.cs_dHo - defects.cs_dm*EF_full_mu_vec_dummy(2:end)' + defects.cs_charge*EF_full_mu_vec_dummy(1) - 3*Tloop_conditions.kBT_equilibrium*sum(defects.cs_dm,2);  % last term is -TdS.  A vacacny has sum(cs_dm)=-1, and interstitial has +1 so dS is + for interstitials
+            if strcmp(Tloop_conditions.vib_ent_flag,'3kB')
+                dG = dummy_defects.cs_dHo - dummy_defects.cs_dm*EF_full_mu_vec_dummy(2:end)' + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1) - 3*Tloop_conditions.kBT_equilibrium * sum(dummy_defects.cs_dm,2);  % last term is -TdS.  A vacacny has sum(cs_dm)=-1, and interstitial has +1.  dSvib = 3*kB*sum(cs_dm)*f(T) where f(T) is the classical or quantum function (positive numbers).  dG=dH-TdS = dH - 3kBT*f(T)*sum(dm).
+            elseif strcmp(Tloop_conditions.vib_ent_flag,'Quantum')
+                dG = dummy_defects.cs_dHo - dummy_defects.cs_dm*EF_full_mu_vec_dummy(2:end)' + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1) - 3*Tloop_conditions.kBT_equilibrium * dSvib_quantum_per_mode(Tloop_conditions.T_equilibrium, Tloop_conditions.vibent_T0) * sum(dummy_defects.cs_dm,2);
             elseif strcmp(Tloop_conditions.vib_ent_flag,'Off')
-                dG = defects.cs_dHo - defects.cs_dm*EF_full_mu_vec_dummy(2:end)' + defects.cs_charge*EF_full_mu_vec_dummy(1);
+                dG = dummy_defects.cs_dHo - dummy_defects.cs_dm*EF_full_mu_vec_dummy(2:end)' + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1);
             else
-                error('Vibrational entropy flag must be On or Off')
+                error('Vibrational entropy flag must be 3kB, Quantum, or Off')
             end
 
             if strcmp(Tloop_conditions.site_blocking_flag,'On_Infinite')
-                N_chargestates = (defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium) ./ (1+sum(exp(-dG/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for infinite lattice
+                N_chargestates = (dummy_defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium) ./ (1+sum(exp(-dG/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for infinite lattice
             elseif strcmp(Tloop_conditions.site_blocking_flag,'On_Finite')
-                N_chargestates = (defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium) ./ (1-sum(exp(-dG/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for finite crystal
+                N_chargestates = (dummy_defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium) ./ (1-sum(exp(-dG/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for finite crystal
             elseif strcmp(Tloop_conditions.site_blocking_flag,'Off')
-                N_chargestates = (defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium))';   % Boltzmann dilute defects approximation here for all charge states of all defects.
+                N_chargestates = (dummy_defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium))';   % Boltzmann dilute defects approximation here for all charge states of all defects.
             else
                 error('Site blocking flag must be On_Infinite, On_Finite, or Off')
             end
@@ -943,23 +1018,27 @@ equilib_dark_sol.mu = mu_out;
 
         elseif Tloop_conditions.calc_method==2 || Tloop_conditions.calc_method==4
             % total formation energy with chemical potential part
-            if strcmp(Tloop_conditions.vib_ent_flag,'On')
-                dG = defects.cs_dHo - defects.cs_dm*EF_full_mu_vec_dummy(2:end)' + defects.cs_charge*EF_full_mu_vec_dummy(1) - 3*Tloop_conditions.kBT_equilibrium*sum(defects.cs_dm,2);  % last term is -TdS.  A vacacny has sum(cs_dm)=-1, and interstitial has +1 so dS is + for interstitials
+            if strcmp(Tloop_conditions.vib_ent_flag,'3kB')
+                dG = dummy_defects.cs_dHo - dummy_defects.cs_dm*EF_full_mu_vec_dummy(2:end)' + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1) - 3*Tloop_conditions.kBT_equilibrium*sum(dummy_defects.cs_dm,2);
+            elseif strcmp(Tloop_conditions.vib_ent_flag,'Quantum')
+                dG = dummy_defects.cs_dHo - dummy_defects.cs_dm*EF_full_mu_vec_dummy(2:end)' + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1) - 3*Tloop_conditions.kBT_equilibrium * dSvib_quantum_per_mode(Tloop_conditions.T_equilibrium, Tloop_conditions.vibent_T0) * sum(dummy_defects.cs_dm,2);
             elseif strcmp(Tloop_conditions.vib_ent_flag,'Off')
-                dG = defects.cs_dHo - defects.cs_dm*EF_full_mu_vec_dummy(2:end)' + defects.cs_charge*EF_full_mu_vec_dummy(1);
+                dG = dummy_defects.cs_dHo - dummy_defects.cs_dm*EF_full_mu_vec_dummy(2:end)' + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1);
             else
-                error('Vibrational entropy flag must be On or Off')
+                error('Vibrational entropy flag must be 3kB, Quantum, or Off')
             end
 
-            % relative formation energy without chemical potential part. We
-            % will only use it for the fixed ones
+
+            % relative formation energy without chemical potential part. We will only use it for the fixed ones
             N_chargestates = zeros(size(dG));  % initialize an empty holder because we will take care of the fixed ones first
-            if strcmp(Tloop_conditions.vib_ent_flag,'On')
-                dG_rel = defects.cs_dHo + defects.cs_charge*EF_full_mu_vec_dummy(1) - 3*Tloop_conditions.kBT_equilibrium*sum(defects.cs_dm,2);  % last term is -TdS.  A vacacny has sum(cs_dm)=-1, and interstitial has +1 so dS is + for interstitials
+            if strcmp(Tloop_conditions.vib_ent_flag,'3kB')
+                dG_rel = dummy_defects.cs_dHo + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1) - 3*Tloop_conditions.kBT_equilibrium * sum(dummy_defects.cs_dm,2);  
+            elseif strcmp(Tloop_conditions.vib_ent_flag,'Quantum')
+                dG_rel = dummy_defects.cs_dHo + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1) - 3*Tloop_conditions.kBT_equilibrium * dSvib_quantum_per_mode(Tloop_conditions.T_equilibrium, Tloop_conditions.vibent_T0) * sum(dummy_defects.cs_dm,2); 
             elseif strcmp(Tloop_conditions.vib_ent_flag,'Off')
-                dG_rel = defects.cs_dHo + defects.cs_charge*EF_full_mu_vec_dummy(1);
+                dG_rel = dummy_defects.cs_dHo + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1);
             else
-                error('Vibrational entropy flag must be On or Off')
+                error('Vibrational entropy flag must be 3kB, Quantum, or Off')
             end
 
             Boltz_fac_rel = exp(-dG_rel/Tloop_conditions.kBT_equilibrium); % Boltzmann factors for all chargstates - to be used in Gibbs distributions for each fixed/frozen defects
@@ -969,10 +1048,10 @@ equilib_dark_sol.mu = mu_out;
             % defects
             for i17 = 1:Tloop_conditions.num_fixed_defects     % loop through the fixed defects one at a time and assign their chargestates first
                 which_frozen_defects_index = Tloop_conditions.fixed_defects_index(i17);
-                which_frozen_chargestates_index = defects.cs_indices_lo(which_frozen_defects_index):defects.cs_indices_hi(which_frozen_defects_index);
+                which_frozen_chargestates_index = dummy_defects.cs_indices_lo(which_frozen_defects_index):dummy_defects.cs_indices_hi(which_frozen_defects_index);
                 Z = sum(Boltz_fac_rel(which_frozen_chargestates_index));  % this is the Z for this particular i17'th defect
                 N_chargestates(which_frozen_chargestates_index) = Tloop_conditions.fixed_defects_concentrations(which_frozen_defects_index)*Boltz_fac_rel(which_frozen_chargestates_index)/Z ;     % denom is a scalar.  Compute the conc of each charge state in defect i6 is Boltz factor/Z(i)*total conc  Totalconc is a scalar also - same for all chargestates of the give defetc
-                dG(which_frozen_chargestates_index) = -Tloop_conditions.kBT_equilibrium*log(N_chargestates(which_frozen_chargestates_index)./defects.cs_prefactor(which_frozen_chargestates_index));   % compute the dG that would give the concentration we just calculated and repalce the one calculated the normal way
+                dG(which_frozen_chargestates_index) = -Tloop_conditions.kBT_equilibrium*log(N_chargestates(which_frozen_chargestates_index)./dummy_defects.cs_prefactor(which_frozen_chargestates_index));   % compute the dG that would give the concentration we just calculated and repalce the one calculated the normal way
             end
 
             % at this point , we have dG values for all chargestates that
@@ -980,11 +1059,11 @@ equilib_dark_sol.mu = mu_out;
             % normal calc routine to do all of them at once.
 
             if strcmp(Tloop_conditions.site_blocking_flag,'On_Infinite')
-                N_chargestates = (defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium) ./ (1+sum(exp(-dG/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for infinite lattice
+                N_chargestates = (dummy_defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium) ./ (1+sum(exp(-dG/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for infinite lattice
             elseif strcmp(Tloop_conditions.site_blocking_flag,'On_Finite')
-                N_chargestates = (defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium) ./ (1-sum(exp(-dG/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for finite crystal
+                N_chargestates = (dummy_defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium) ./ (1-sum(exp(-dG/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for finite crystal
             elseif strcmp(Tloop_conditions.site_blocking_flag,'Off')
-                N_chargestates = (defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium))';   % Boltzmann dilute defects approximation here for all charge states of all defects.
+                N_chargestates = (dummy_defects.cs_prefactor .* exp(-dG/Tloop_conditions.kBT_equilibrium))';   % Boltzmann dilute defects approximation here for all charge states of all defects.
             else
                 error('Site blocking flag must be On_Infinite, On_Finite, or Off')
             end
@@ -999,15 +1078,80 @@ equilib_dark_sol.mu = mu_out;
         % does what the name says - takes in a reduced EF_fixed_mu_vec and
         % spits out the whole one with mu values for all elements.
         fixed_mu_vec = EF_fixed_mu_vec_dummy(2:end);  %strip off EF from front so only have the fixed mu's
-        full_mu_vec = Tloop_conditions.mu;   % initialize as those currently in the Tloop_conditions.mu - this assigns all the NON-fixed ones as well as the fixed ones
+        full_mu_vec = Tloop_conditions.muT_equilibrium;   % initialize as those currently in the Tloop_conditions.mu - this assigns all the NON-fixed ones as well as the fixed ones
         counter = 0;
         for i18 = Tloop_conditions.indices_of_fixed_elements  % loop calling only the fixed elements
             counter = counter + 1;
-            full_mu_vec(i18) = fixed_mu_vec(counter);  % write fixed mu's into the full mu vec.
+            full_mu_vec(i18) = fixed_mu_vec(counter);  % write fixed mu's into the full mu vec (overwriting anything already there).
         end
         EF_full_mu_vec_out = [EF_fixed_mu_vec_dummy(1) full_mu_vec];
     end
 
 
-end  %%% end whole main function
 
+    function [dSvib_Q_per_mode_norm] = dSvib_quantum_per_mode(TempK, T0)
+        % T0/T is x = hbar*omega0/kBT.  So compute the T0 for the mean mode
+        % from the Debeye temperature.  
+       dSvib_Q_per_mode_norm = T0/(2*TempK)*coth(T0/(2*TempK)) + log(csch(T0/(2*TempK)));
+    end
+
+
+
+
+
+    % function [dSvib] = Quantum_dSvib(TempK, w0_added, w0_removed)
+    %     %
+    %     % computes the dSvib for adding some phonon modes and removing
+    %     % others while forming a chargestate.
+    %     % w0 values should be in s-1 units (not cm-1).
+    %     % TempK is a scalar temperature.
+    %     % w0_added and w0_removed are matrices with each row listing the phonon frequencies
+    %     % added by creating the defect.  If none, just pad with zeros.  The
+    %     % number of columns will be determined by the chargestate that
+    %     % adds/subtracts the most modes.  Modes can be repeated if it adds/subtracts multiple degenerate modes - jsut list
+    %     % them multiple times for that row.  The number of columns need not
+    %     % be equal in the added and removed matrices.
+    %     %
+    %     % Modes are treated as dirac deltas in the phDOS.  Reference is the perfect unit cell or supercell appropriate for the number of cells available in the crystal for that defect or complex.
+    %     % Changing the number of atoms in that volume can be achieved by
+    %     % uneuqal numbers of modes added and subtracted.  Each atom
+    %     % removed should subtract 3 modes, each added should add 3.  A
+    %     % substitutional should have equal numbers of added and
+    %     % subtracted, while vacancies and interstitials and complexes may
+    %     % have unequal numbers.
+    %     % dSvib finally output should be a column vector with rows euqal to
+    %     % # chargestates.
+    % 
+    %     hbar = 1.05457182e-34;
+    %     kB = 1.380649e-23;
+    % 
+    %     dSvib = zeros(dummy_defects.num_chargestates,1);
+    % 
+    %     for i = 1:dummy_defects.num_chargestates
+    %         % for the ith defect, pick its row from the w0 matrix and take
+    %         % only the nonzero elements of that row.  zeros are for padding
+    %         % to make a proper matrix.  If the x_added_vec (or the removed
+    %         % one) is empty, meaning that all the entries were zero, it's not a problem as the dSvib will return 0.
+    %         % the nonzeros() function gives a column vector so need to take
+    %         % its trasnpose.
+    %         x_added_vec = hbar*nonzeros(w0_added(i,:))' / (kB*TempK);
+    %         x_removed_vec = hbar*nonzeros(w0_removed(i,:))' / (kB*TempK);
+    %         dSvib(i) = Dirac_Delta_w0_dSvib(x_added_vec) - Dirac_Delta_w0_dSvib(x_removed_vec);
+    %     end
+    % end
+    % 
+    % 
+    % 
+    % function [dSvib] = Dirac_Delta_w0_dSvib(x_vec)
+    %     % this can't handle zeros in the x_vec since the Bose distribution
+    %     % diverges at 0.
+    %     dSvib_vec = (exp(x_vec)./(exp(x_vec)-1)) .* log( (1+coth(x_vec/2))/2) - (1./(exp(x_vec)-1)) .* log(1./(exp(x_vec)-1));
+    %     dSvib = sum(dSvib_vec);
+    % end
+
+
+
+
+
+
+end  %%% end whole main function

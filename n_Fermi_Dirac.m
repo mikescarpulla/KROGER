@@ -1,4 +1,5 @@
-function [nFD,nBoltz] = n_Fermi_Dirac(eta,Nc3D)
+function [nFD] = n_Fermi_Dirac(eta, Nc3D)
+% function [nFD, nBoltz] = n_Fermi_Dirac(eta, Nc3D)
 % computes carrier density using full Fermi Dirac intrgral for a 3D density
 % of states.    
 % Eta is defined as
@@ -18,7 +19,8 @@ for i=1:max(size(eta))
 end
 
 nFD = 2/sqrt(pi)*Nc3D*ans;
-nBoltz = Nc3D*exp(eta);
+
+% nBoltz = Nc3D*exp(eta);
 
 end %end main function 
 
@@ -26,7 +28,7 @@ end %end main function
 
 
 %%% subroutine
-function FD_int=Fermi_Dirac(aj,eta)
+function FD_int = Fermi_Dirac(aj,eta)
 % the subroutine below was modified from the one mentioned in this note to
 % make it a useful function rather than giving text outut to screen
 % Matlab m file to evaluate the Half-order Fermi-Dirac integral
