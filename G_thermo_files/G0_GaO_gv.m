@@ -1,4 +1,4 @@
-function [G0_GaO_gv] = G0_GaO_gv(T,P_tot, X_i, P_units)
+function [G0_GaO_gv] = G0_GaO_gv(T, P_tot, X_i, P_units)
 % gives the thermodynamic variables of GaO as function of T, P based
 % on Matvei Zinkevich and Fritz Aldinger J. Am. Ceram. Soc., 87 [4] 683–91
 % (2004)  (where the ZA comes from)
@@ -34,13 +34,12 @@ nP = size(P_tot,1);
 
 
 T = T*ones(1,nP);   % copy T to make a matrix with as many columns as P has entries
-P_tot = P_tot*ones(nT,1);   % similarly for P - copy down as many rows as T has entries
+P_tot = ones(nT,1)*P_tot;   % similarly for P - copy down as many rows as T has entries
 G0_GaO_gv = zeros(size(T));
 
 mask1 = (T>0) .* (T<=800);  % 0 to 800K     logical array same size as T with ones where true and 0 where false
 mask2 = (T>800) .* (T<=1500);   % 800-1500 K
 mask3 = (T>1500) .* (T<=4000);   % up to 4000 K
-
 
 % up to 800 K 
 G0_GaO_gv = G0_GaO_gv + mask1.*(136904.191 -22.25862*T -30.49045*T.*log(T) -0.0048738965*(T.^2) - 2.51268E-7*(T.^3) + 57767.3 .*(T.^-1)  );
@@ -55,12 +54,14 @@ G0_GaO_gv = G0_GaO_gv + mask3.*(109485.47 +175.498025*T -57.18317*T.*log(T) +0.0
 % now convert units to eV per O2
 G0_GaO_gv = G0_GaO_gv/(avo*q);   % eV/O2 molecule
 
-% Now add in the pressure  GaO is a gas under 
+% Now take Ptot and Xi into account.  For solids and liquids, it's only Xi
+% that matters while gasses/vapors have the P/Pref term too.
 G0_GaO_gv = G0_GaO_gv + kB_eV*T.*(log(P_tot/P_ref) + log(X_i));
 
 % set any that are zero becasue of masking to infintiy so it produces an
 % obvious error that can be seen 
 G0_GaO_gv(G0_GaO_gv==0) = Inf;
+
 
 end
 

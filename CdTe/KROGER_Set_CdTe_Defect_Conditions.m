@@ -12,7 +12,6 @@ end
 
 if ~isfield(conditions,'Na') || isempty(conditions.Na)
     conditions.Na = 0;
-    % conditions.Na = 0;
 end
 %%% end shallow doping %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

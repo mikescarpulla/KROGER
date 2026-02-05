@@ -51,7 +51,7 @@ end
 
 ratio = Ga_O_stoich(:,2)./(Ga_O_stoich(:,1) + Ga_O_stoich(:,2));
 
-ratio_stoich = cat(2,ratio,Ga_O_stoich);
+ratio_stoich = cat(2, ratio, Ga_O_stoich);
 
 element_totals = [num_Ga num_O num_Si num_H num_Fe num_Sn num_Cr num_Ti num_Ir num_Mg num_Ca num_Zn num_Co num_Zr num_Hf num_Ta num_Ge num_Pt num_Rh];
 

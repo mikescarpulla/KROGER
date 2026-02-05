@@ -7,14 +7,17 @@
 % So it's worth doing a fine T grid for long calcuations so you dont have
 % to ever do it over.
 
-conditions.T_equilibrium = 900:-20:300;  % row vector of T in K at which to compute the equilirium
 
+conditions.T_equilibrium = conditions.SQ_T_start :-1 :conditions.SQ_T_end;  % row vector of T in K, spaced 1 K apart from the max to min temperatures so we can generate a lookup table for any possible T we need inside the SQ calc
 conditions.num_T_equilibrium = numel(conditions.T_equilibrium);
 conditions.kBT_equilibrium = conditions.kB * conditions.T_equilibrium;
 
+% we're not going to use it in SQ calcs, but some of the other modular scripts look for
+% this so just fill it in anyway so they are happy.  
 % set final T for full quenching from the T_equilibrium values above
 conditions.T_fullquench = 300;   % scalar temperature at which to compute the defect concentrations after quenching from T_equilibrium
 conditions.kBT_fullquench = conditions.kB * conditions.T_fullquench;
+
 
 % logic checks on temperatures
 if size(conditions.T_equilibrium,1)~=1
@@ -62,13 +65,14 @@ end
 % for T-independent mu conditions (set one mu like mu=0 for rich/poor conditions)
 conditions.mu_CdTe = -1.39;        % formation energy of CdTe from Intuon
 
-% conditions.mu_conditions_flag ='Cd-rich';
-% conditions.mu_conditions_flag = 'Te-rich';
-conditions.mu_conditions_flag = 'CdTe_touching_Cd(l,s)';
+% conditions.mu_conditions_flag = 'CdTe_touching_Cd(l,s)';
 % conditions.mu_conditions_flag = 'CdTe_touching_Te(l,s)';
-% conditions.mu_conditions_flag = 'Cd:Te_stoich';
+% conditions.mu_conditions_flag = 'Cd-rich';
 
-% conditions.f_for_stoich = 0.6; % turn this on only while running Cd:Te_stoich scenario. higher f value means higher Te richness
+conditions.mu_conditions_flag = 'Cd:Te_stoich';
+
+conditions.f_for_stoich = 0.5; % turn this on only while running Cd:Te_stoich scenario. higher f value means higher Te richness
+
 
 % if using "pO2-variable", need to also set pO2
 % conditions.pO2 = 1;
@@ -117,7 +121,18 @@ conditions.muT_equilibrium(:,1) = mu_Cd;  % these 3 lines not combined to keep i
 conditions.muT_equilibrium(:,2) = mu_Te;
 
 
+% element order for reference
+% Cd Te N P As Sb Cu Cl O
+
 %% Impurity elements
+
+
+%% set mu_Cl
+% % % 2 mu_Cl + mu_Cd = -3.59 & mu_Cd + mu_Te = -1.17 according to Walter Orellana 
+% % % conditions.muT_equilibrium(:,8) = -1.8; % Cd rich; when mu_Cd = 0
+% % % conditions.muT_equilibrium(:,8) = -1.21; % Te rich; when mu_Cd = -1.17
+
+
 % calculate the values of all elements' limiting mu values based on the conditions
 % we use only some of them as needed - use them by overwriting the muT_equilibrium
 % for Ga2O3, we are using limits based on oxygen, but other limits can also
@@ -125,24 +140,23 @@ conditions.muT_equilibrium(:,2) = mu_Te;
 % Ga can exclude other ranges for some elements, ..)
 % [impurity_mu_boundary_limits] = impurity_mu_limit_imposed_by_pO2(conditions.T_equilibrium, conditions.P_tot, conditions.P_units, mu_Te);  % note this function's output first column is the first impurity element
 
-G0_Cd3As2 = G0_Cd3As2_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
-% G0_As2Te3 = G0_As2Te3_ls(conditions.num_T_equilibrium, conditions.P_tot, 1, conditions.P_units);
-
+G0_Cd3As2 = G0_Cd3As2_ls(T, P_tot, 1, P_units);
+G0_As2Te3 = G0_As2Te3_ls(T, P_tot, 1, P_units);
+% G0_Fe3O4 = G0_Fe3O4_ls(T, P_tot, 1, P_units);
 
 As_mu_limit_Cd3As2 = (G0_Cd3As2 - 3*mu_Cd)/2;
-% As_mu_limit_As2Te3 = (G0_As2Te3 - 3*mu_Te)/2;
+As_mu_limit_As2Te3 = (G0_As2Te3 - 3*mu_Te)/2;
+% Fe_mu_limit_Fe3O4 = (G0_Fe3O4 - 4*mu_O)/3;
 
-
-% mu_As_lim = min([As_mu_limit_Cd3As2 As_mu_limit_As2Te3 ],[],2);
-mu_As_lim = min(As_mu_limit_Cd3As2,[],2);
+mu_As_lim = min([As_mu_limit_Cd3As2 As_mu_limit_As2Te3 ],[],2);
 
 As_mu_num = 5;
 conditions.mu_from_2nd_phases_flag(As_mu_num) = 1;
-conditions.mu_constant_flag(As_mu_num) = 0;
-conditions.muT_equilibrium(:,As_mu_num) = mu_As_lim;
+conditions.muT_equilibrium(:,As_mu_num) = mu_As_lim(:,1);
 
 % set either constant mu values, T-dependent mu values, or mu values from equilibrium with 2nd phases.  Flip the flag values from 0/1 for fixed mu and mu from 2nd phases
 
+%% constant mu or from 2nd phases
 % example for setting Si to -4 for all T.  the const mu flag is already 1 and from_2nd_phases flag =0 since this is how they're intialized but explicitly set here for clarity
 % conditions.mu_constant_flag(3) = 1;
 % conditions.mu_from_2nd_phases_flag(3) = 0
@@ -183,13 +197,13 @@ end
 % This is mutually exclusive with setting chem potential for the element
 %
 % element order for ref
-% Cd Te N P As Sb Cu
+% Cd Te N P As Sb Cu Cl O
 
 
 % initilaize flag and value pair for elements set by total concentrations -
 % since this is a more unusual option this supercedes any mu values set (mu values determined in the calc self consistently).  This should be mutually exclusive with setting mu value flags though.
 conditions.fixed_conc_flag = zeros(1,conditions.num_elements);
-conditions.fixed_conc_values = zeros(1,conditions.num_elements);  % this will hold target values of elements
+conditions.fixed_conc_values = zeros(1,conditions.num_elements);  % this will hold target values of elements if set
 
 % initialize holder for the ranges over which to search for mu for frozen elements.  convention for now is that this matrix should be the size for all the elements, not just the fixed ones we specify ranges for all the elements.  Later can change this to only specify ranges for the ones that are frozen (not specify values for those left open).
 % since either a direct grid search or particle swarm is used to generate the first guess, there are
@@ -199,15 +213,15 @@ conditions.fixed_conc_values = zeros(1,conditions.num_elements);  % this will ho
 conditions.fixed_elements_mu_ranges = zeros(conditions.num_elements,2);   % create  matrix of right size for ALL the elements - only will pay attention to those which are fixed
 
 
-%% Fix As doping 
-% % % % conditions.fixed_conc_flag(5) = 1;          % fix As
-% % % % conditions.mu_set_flag(5) = 0;              % flip the flag saying Si is set by mu
-% conditions.fixed_conc_values(5) = 1e17;     % specify the value
-% lo_mu_As = -10; % set range to search for the unknown mu
-% hi_mu_As = -2;
-% conditions.fixed_elements_mu_ranges(5,:) = [lo_mu_As hi_mu_As];
-
-
+% % Fix As doping 
+conditions.fixed_conc_flag(5) = 1;          % fix As
+conditions.mu_set_flag(5) = 0;              % flip the flag saying Si is set by mu
+conditions.fixed_conc_values(5) = 1e17;     % specify the value
+lo_mu_As = -6; % set range to search for the unknown mu
+hi_mu_As = -1;
+conditions.fixed_elements_mu_ranges(5,:) = [lo_mu_As hi_mu_As];
+% 
+% 
 
 
 

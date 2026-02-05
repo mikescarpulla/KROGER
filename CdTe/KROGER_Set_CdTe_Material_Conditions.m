@@ -20,10 +20,11 @@ conditions.varshini_b = 160;
 
 % conditions.EcT_fraction = 0;
 % conditions.EcT_fraction = 0.25;
-conditions.EcT_fraction = 0.70;
+% conditions.EcT_fraction = 0.5;
 % conditions.EcT_fraction = 0.375;
 % conditions.EcT_fraction = 0.50;     % what fraction of Eg(T)  happens in the CB?
 % conditions.EcT_fraction = 0.75;
+conditions.EcT_fraction = 0.80;   % From Intuon, it should be 80%
 % conditions.EcT_fraction = 1;
 conditions.EvT_fraction = 1-conditions.EcT_fraction;
 

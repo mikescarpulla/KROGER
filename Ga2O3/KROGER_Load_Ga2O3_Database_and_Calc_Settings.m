@@ -103,6 +103,7 @@ conditions.save_min = 1e12;  % set a minimum threshold for a defect or chargesta
 
 % conditions.stoich_flag = 'CdTe';
 conditions.stoich_flag = 'Ga2O3';
+conditions.stoich_flag = 'GaN';
 
 % save all the defects and chargestates or just the ones
 % conditions.save_files_flag = 'All';
@@ -161,6 +162,8 @@ conditions.fullquench_EF_search_step_divisor = 5;
 % conditions.search_method_flag = 'grid_fminsearch';
 % conditions.search_method_flag = 'particleswarm_pattern';
 conditions.search_method_flag = 'particleswarm_pattern_simplex';
+conditions.search_method_quiet_flag = 'quiet';
+% conditions.search_method_quiet_flag = 'verbose';
 
 if strcmp(conditions.search_method_flag,'grid_fminsearch')
     %% set options for fminsearch for fixing elements concentrations

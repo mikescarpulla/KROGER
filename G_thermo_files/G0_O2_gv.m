@@ -50,7 +50,8 @@ G0_O2_gv = G0_O2_gv + mask2.*(-13136.0174 + 24.7432966*T -33.55726*T.*log(T) -0.
 % now convert units to eV per O2
 G0_O2_gv = G0_O2_gv/(avo*q);   % eV/O2 molecule
 
-% Now add in the pressure  
+% Now take Ptot and Xi into account.  For solids and liquids, it's only Xi
+% that matters while gasses/vapors have the P/Pref term too.
 G0_O2_gv = G0_O2_gv + kB_eV*T.*( log(P_tot/P_ref) + log(X_i));
 
 % set any that are zero becasue of masking to infintiy so it produces an
