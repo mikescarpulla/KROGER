@@ -21,10 +21,10 @@ T = T(:);   %make T a col vactor
 
 % compute the pressure-independent difference in G0 between the vapor and
 % condensed phases.  
-[G0_Ga_ls_value] = G0_Ga_ls(T, P_ref, 1, P_units);  
-[G0_Ga_gv_value] = G0_Ga_gv(T, P_ref, 1, P_units);
+[G_Ga_ls_value] = G_Ga_ls(T, P_ref, 1, P_units);  
+[G_Ga_gv_value] = G_Ga_gv(T, P_ref, 1, P_units);
 
-Ga_equilib_vap_pres = exp(-(G0_Ga_gv_value-G0_Ga_ls_value)./(kB_eV*T));
+Ga_equilib_vap_pres = exp(-(G_Ga_gv_value-G_Ga_ls_value)./(kB_eV*T));
 
 end
 

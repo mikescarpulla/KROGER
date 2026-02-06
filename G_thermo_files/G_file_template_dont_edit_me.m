@@ -1,9 +1,13 @@
-function [G0_substance] = G0_substance(T, P_tot, X_i, P_units)
+function [G_substance] = G_substance(T, P_tot, X_i, P_units)
 %
-%  each substance should have a function Go_substance_ls.m for condensed
-%  phases, and Go_substance_gv.m for gas/vapor.  See FAQs below.  
+%  each substance should have a function G_substance_ls.m for condensed
+%  phases, and G_substance_gv.m for gas/vapor.  See FAQs below.  
 % 
-% this function gives the standard Gibbs energy Go of substance as function of T, Ptot, and mole fraction which for a gas or ideal solution is X_i=P_partial/P_tot
+% this function gives the standard Gibbs energy Go of substance which is a
+% function of T only.  Then it turns it into a function of T, Ptot, and X  (mole fraction).  
+% for liquids/solids we only add in ln(X) term, while for gasses we add
+% ln(X) + ln(Ptot/pref) and since x = Ppartial/Ptot this ends up being the
+% same as ln(Ppartial/Pref)
 % T and Ptot can come in as vectors, so output in general will be a 2D array.  
 % T in K, P in atm, Torr etc (must put in string argument 'atm' or 'Torr' etc)
 % G computed in kJ/mol becasue tables are this way then we convert to eV/formula unit at the end
@@ -21,7 +25,6 @@ function [G0_substance] = G0_substance(T, P_tot, X_i, P_units)
 % of them.  Then at the end of the section, just pick the minimum value for each T,P_tot point - that automatically gives us the Go for the stable phase under those conditions.  
 % A future improvement could be to also spit out an array telling which phase is stable where.  Could be done with T,P masking and a unique ID for each phase.   
 %
-% FAQ4: why keep the  
 %
 % Handy preformated Showmate templates
 % Go = mask1.*(A + B*T.^(-2) + C*T.^(-1) + D*T.^(0.5) + E*T + F*T.^(2) + G*T.^(3) + H*T.^(4) + J*T.*log(T));
@@ -86,39 +89,13 @@ G0_substance = G0_substance/(avo*q);   % eV/Ga2O molecule
 % that matters while gasses/vapors have the P/Pref term too.  Pick one of
 % the lines below and delete the other one.  
 
-G0_substance = G0_substance + kB_eV*T.* log(X_i);  %condensed phases
+G_substance = G0_substance + kB_eV*T.* log(X_i);  %condensed phases
 
-G0_substance = G0_substance + kB_eV*T.* ( log(P_tot/P_ref) + log(X_i));   %gas/vapor
+G_substance = G0_substance + kB_eV*T.* ( log(P_tot/P_ref) + log(X_i));   %gas/vapor
 
 % set any that are zero becasue of masking to infintiy so it produces an
 % obvious error that can be seen 
-G0_substance(G0_substance==0) = Inf;
-G0_substance(isnan(G0_substance)) = Inf;   % set NaN to Inf too - probably this will arise at 0 K.  
+G_substance(G_substance==0) = Inf;
+G_substance(isnan(G_substance)) = Inf;   % set NaN to Inf too - probably this will arise at 0 K.  
 
 end
-
-
-%% for referecne, it's nice to copy the original data here in comments to allow proofreading.  For exaple this is the text file from FactSage for H2O.  
-% % % 
-% % % View Data  H2O     Units:  T(K) P(atm) Energy(J) Quantity(mol) 
-% % % Name: Water
-% % % 
-% % %   G(T) J/mol - 1 atm  
-% % % 
-% % %              G(T)                     G(T)                   G(T)                     T(K)        
-% % % ____________ ________________________ ______________________ ________________________ ___________ 
-% % % 
-% % % S1         1 - 303622.945             + 198.232091     T     - 36.2460000     T ln(T) 250 - 273   
-% % % L1         2 - 256638.942             - 1118.62474     T     - 0.760349801     T^ 2   298 - 500   
-% % % L1         2 - 1924378.83     T^-1    + 5.318874400E-04 T^ 3 - 2.059132015E-07 T^ 4   298 - 500   
-% % % L1         2 + 203.118982     T ln(T)                                                 298 - 500   
-% % % G1         3 - 255475.808             - 15.1731427     T     - 7.474858139E-03 T^ 2   298 - 1100  
-% % % G1         3 + 13999.6597     T^-1    + 9.205931575E-08 T^ 3 + 1107.27182     ln(T)   298 - 1100  
-% % % G1         3 - 25.7816397     T ln(T)                                                 298 - 1100  
-% % % G1         4 152152.281               + 164.817017     T     - 8.054003823E-05 T^ 2   1100 - 4000 
-% % % G1         4 - 12075583.2     T^-1    - 83128.2757     ln(T) + 5947.37003     T^0.5   1100 - 4000 
-% % % G1         4 - 53.1457895     T ln(T)                                                 1100 - 4000 
-% % % G1         5 - 4469439.52             + 1472.55188     T     + 298264202.     T^-1    4000 - 6000 
-% % % G1         5 + 778290.990     ln(T)   - 64372.3401     T^0.5 - 155.190827     T ln(T) 4000 - 6000 
-% % % ____________ ________________________ ______________________ ________________________ ___________ 
-% % % 
