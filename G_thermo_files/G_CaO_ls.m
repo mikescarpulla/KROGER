@@ -1,4 +1,4 @@
-function [G0_CaO_ls] = G0_CaO_ls(T, P_tot, X_i, P_units)
+function [G_CaO_ls] = G_CaO_ls(T, P_tot, X_i, P_units)
 %
 %  each substance should have a function Go_substance_ls.m for condensed
 %  phases, and Go_substance_gv.m for gas/vapor.  See FAQs below.  
@@ -80,37 +80,11 @@ G0_CaO_ls = min( cat(3, G0_CaO_s, G0_CaO_l),[],3);  % stack the two Go matrices 
 G0_CaO_ls = G0_CaO_ls/(avo*q);   % eV/Ga2O molecule
 
 % Now take Ptot and Xi into account.  
-G0_CaO_ls = G0_CaO_ls + kB_eV*T.* log(X_i);
+G_CaO_ls = G0_CaO_ls + kB_eV*T.* log(X_i);
 
 % set any that are zero becasue of masking to infintiy so it produces an
 % obvious error that can be seen 
-G0_CaO_ls(G0_CaO_ls==0) = Inf;
+G_CaO_ls(G0_CaO_ls==0) = Inf;
 
 end
 
-
-% % 
-% % View Data  CaO     Units:  T(K) P(atm) Energy(J) Quantity(mol) 
-% % Name: calcium oxide
-% % 
-% %   G(T) J/mol - 1 atm  
-% % 
-% %              G(T)                     G(T)                   G(T)                     T(K)        
-% % ____________ ________________________ ______________________ ________________________ ___________ 
-% % 
-% % S1         1 - 651262.658             + 376.676564     T     + 573572.991     T^-1    298 - 2845  
-% % S1         1 - 535.615998     T^0.5   - 17163131.3     T^-2  - 58.7911706     T ln(T) 298 - 2845  
-% % S1         2 - 676442.671             + 407.120846     T     - 62.7600000     T ln(T) 2845 - 3500 
-% % L1         3 - 571766.658             + 348.735802     T     + 573572.991     T^-1    298 - 2845  
-% % L1         3 - 535.615998     T^0.5   - 17163131.3     T^-2  - 58.7911706     T ln(T) 298 - 2845  
-% % L1         4 - 596946.671             + 379.180084     T     - 62.7600000     T ln(T) 2845 - 3500 
-% % G1         5 78867.7875               + 205.751461     T     + 1.280263453E-02 T^ 2   298 - 1400  
-% % G1         5 - 537947.001     T^-1    - 1.712449235E-06 T^ 3 - 10352.2747     ln(T)   298 - 1400  
-% % G1         5 - 61.5491809     T ln(T)                                                 298 - 1400  
-% % G1         6 37566279.6               - 406018.798     T     + 3.27569158     T^ 2    1400 - 3800 
-% % G1         6 - 329377998.     T^-1    - 2.831966034E-05 T^ 3 - 14615548.9     ln(T)   1400 - 3800 
-% % G1         6 - 1162.61296     T^ 1.5  + 5256160.29     T^0.5 + 48763.2209     T ln(T) 1400 - 3800 
-% % G1         7 - 12975648.8             + 3153.92066     T     + 873451717.     T^-1    3800 - 6000 
-% % G1         7 + 2367789.28     ln(T)   - 178046.562     T^0.5 - 282.261951     T ln(T) 3800 - 6000 
-% % ____________ ________________________ ______________________ ________________________ ___________ 
-% % 
