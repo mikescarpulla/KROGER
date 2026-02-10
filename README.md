@@ -6,6 +6,8 @@ README
 
 Welcome to Kroger in Matlab.  The purpose is extended calculations of defect concentrations, given thermochemistry and computed point defect formation energies.  
 
+We are currently working on pythonation of KROGER - the python version is hosted here: https://github.com/mikescarpulla/pyKROGER/
+
 The main calculation engine is "defect_equilibrium_dark_with_frozen.m"
 
 To run a scenario, we build up a "conditions" variable via a script (for now at least), then pass it and the desired defect database file to the calculation engine.  The script for now also handles formatting the output and saving it to disk.  
