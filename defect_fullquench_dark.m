@@ -79,7 +79,7 @@ FQ_dark_sol.dG_cs = -(dummy_conditions.kBT_equilibrium' * ones(1,dummy_defects.n
         %%%% function that computes the net charge
         [n, p, sth1, sth2] = FQ_carrier_concentrations(EF_dummy);
         [N_chargestates_FQ] = FQ_chargestate_concentrations(EF_dummy);
-        charge_bal = sum(dummy_defects.cs_charge .* N_chargestates_FQ') + p + sth1 + sth2 - n + dummy_conditions.Nd - dummy_conditions.Na ;
+        charge_bal = sum(dummy_defects.cs_q .* N_chargestates_FQ') + p + sth1 + sth2 - n + dummy_conditions.Nd - dummy_conditions.Na ;
     end  % charge_bal
 
 
@@ -111,7 +111,7 @@ FQ_dark_sol.dG_cs = -(dummy_conditions.kBT_equilibrium' * ones(1,dummy_defects.n
 
 
     function [dG_cs_rel] = dG_chargestates_rel(EF_dummy)
-        dG_cs_rel = dummy_defects.cs_Eform + dummy_defects.cs_charge * EF_dummy;  % compute the part without mu and without vibent
+        dG_cs_rel = dummy_defects.cs_Eform + dummy_defects.cs_q * EF_dummy;  % compute the part without mu and without vibent
         if strcmp(dummy_conditions.vib_ent_flag,'3kB')
             dG_cs_rel = dG_cs_rel - 3*dummy_conditions.kBT_fullquench * sum(dummy_defects.cs_dm,2);  % last term is -TdS.  A vacacny has sum(cs_dm)=-1, and interstitial has +1.  dSvib = 3*kB*sum(cs_dm)*f(T) where f(T) is the classical or quantum function (positive numbers).  dG=dH-TdS = dH - 3kBT*f(T)*sum(dm).
         elseif strcmp(dummy_conditions.vib_ent_flag,'Quantum')

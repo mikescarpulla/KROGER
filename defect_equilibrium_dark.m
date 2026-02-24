@@ -356,7 +356,7 @@ for i2 = 1:dummy_defects.num_defects
     N_defects_out(:,i2) = sum(N_chargestates_out(:,indices_of_all_cs_in_defect),2);  %sum all the chargestates in the defect to get its total number (col vector)
     for i3 = 1:dummy_conditions.num_T_equilibrium
         [~,dominant_cs_index] = max(N_chargestates_out(i3, indices_of_all_cs_in_defect));  %figure out the realtive position (1st, 2nd, 3rd etc) in the defect's chargestate list of the defect with highest concentration at each T
-        defect_prefac(i3, i2) = dummy_defects.cs_prefactor(indices_of_all_cs_in_defect(dominant_cs_index(1)));    % store the concentration prefactor for that dominant chargestate of the current defect, at each temperature.  %NOTE: there could be a low-probability case where the max() gives more than one index out - if two chargestates have exactly the same concentration.  what we have done is just taken the index of the first one in the list.
+        defect_prefac(i3, i2) = dummy_defects.cs_tot_prefactor(indices_of_all_cs_in_defect(dominant_cs_index(1)));    % store the concentration prefactor for that dominant chargestate of the current defect, at each temperature.  %NOTE: there could be a low-probability case where the max() gives more than one index out - if two chargestates have exactly the same concentration.  what we have done is just taken the index of the first one in the list.
     end
 end
 % compute the effective formation energy for each defect.
@@ -410,8 +410,8 @@ equilib_dark_sol.mu = mu_out;
         [n, p, sth1, sth2] = Carrier_Concentrations(EF_dummy);  %deal with carriers first
         EF_full_mu_vec_dummy = [EF_dummy Tloop_conditions.muT_equilibrium];   % create the full EF_mu_vec
         [N_chargestates,~] = Chargestate_Concentrations(EF_full_mu_vec_dummy);
-        charge_bal12 = sum(dummy_defects.cs_charge.* N_chargestates') + p + sth1 + sth2 - n + Tloop_conditions.Nd - Tloop_conditions.Na  ;              % absolute signed charge bal comes out signed +/-
-        % charge_bal12 = (sum(dummy_defects.cs_charge.* N_chargestates') +
+        charge_bal12 = sum(dummy_defects.cs_q.* N_chargestates') + p + sth1 + sth2 - n + Tloop_conditions.Nd - Tloop_conditions.Na  ;              % absolute signed charge bal comes out signed +/-
+        % charge_bal12 = (sum(dummy_defects.cs_q.* N_chargestates') +
         % p - n + Tloop_conditions.Nd -
         % Tloop_conditions.Na)/sqrt(Tloop_conditions.Nc*Tloop_conditions.Nv)
         % ;  % scaled to ni2 sort of.   comes out signed +/-
@@ -428,8 +428,8 @@ equilib_dark_sol.mu = mu_out;
         % out to the full one before sending to chargestate calculation
         [EF_full_mu_vec_dummy] = Expand_Fixed_Mu_Vec_To_Full_Mu_Vec(EF_fixed_mu_vec_dummy);
         [N_chargestates,~] = Chargestate_Concentrations(EF_full_mu_vec_dummy);  % send this full vec to calculate the chargestates
-        charge_bal34 = sum(dummy_defects.cs_charge.* N_chargestates') + p + sth1 + sth2 - n + Tloop_conditions.Nd - Tloop_conditions.Na;   % absolute signed charge bal
-        % charge_bal34 = (sum(dummy_defects.cs_charge.* N_chargestates') +
+        charge_bal34 = sum(dummy_defects.cs_q.* N_chargestates') + p + sth1 + sth2 - n + Tloop_conditions.Nd - Tloop_conditions.Na;   % absolute signed charge bal
+        % charge_bal34 = (sum(dummy_defects.cs_q.* N_chargestates') +
         % p - n + Tloop_conditions.Nd -
         % Tloop_conditions.Na)/sqrt(Tloop_conditions.Nc*Tloop_conditions.Nv);
         % % relative comes out signed +/-
@@ -521,18 +521,18 @@ equilib_dark_sol.mu = mu_out;
         %                                     
         % potential part, relative doesnt).
         % fixed dH0, then q*Ef term, then -TDSvib term.
-        dG_rel = dummy_defects.cs_Eform + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1) - dG_vib_ent;
+        dG_rel = dummy_defects.cs_Eform + dummy_defects.cs_q*EF_full_mu_vec_dummy(1) - dG_vib_ent;
         dG_cs_out = dG_rel - dummy_defects.cs_dm*EF_full_mu_vec_dummy(2:end)';  % For the full dG the last thing is mu times number of atoms
 
         % compute concentrations from dG depending on what kind of site statistics chosen
         % Note: we compute them all here, and adjust the ones we need below
         %
         if strcmp(Tloop_conditions.site_blocking_flag,'On_Infinite')
-            N_chargestates = (dummy_defects.cs_prefactor .* exp(-dG_cs_out/Tloop_conditions.kBT_equilibrium) ./ (1+sum(exp(-dG_cs_out/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for infinite lattice
+            N_chargestates = (dummy_defects.cs_tot_prefactor .* exp(-dG_cs_out/Tloop_conditions.kBT_equilibrium) ./ (1+sum(exp(-dG_cs_out/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for infinite lattice
         elseif strcmp(Tloop_conditions.site_blocking_flag,'On_Finite')
-            N_chargestates = (dummy_defects.cs_prefactor .* exp(-dG_cs_out/Tloop_conditions.kBT_equilibrium) ./ (1-sum(exp(-dG_cs_out/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for finite crystal
+            N_chargestates = (dummy_defects.cs_tot_prefactor .* exp(-dG_cs_out/Tloop_conditions.kBT_equilibrium) ./ (1-sum(exp(-dG_cs_out/Tloop_conditions.kBT_equilibrium)) ))';    %% with site blocking for finite crystal
         elseif strcmp(Tloop_conditions.site_blocking_flag,'Off')
-            N_chargestates = (dummy_defects.cs_prefactor .* exp(-dG_cs_out/Tloop_conditions.kBT_equilibrium))';   % Boltzmann dilute defects approximation here for all charge states of all defects.
+            N_chargestates = (dummy_defects.cs_tot_prefactor .* exp(-dG_cs_out/Tloop_conditions.kBT_equilibrium))';   % Boltzmann dilute defects approximation here for all charge states of all defects.
         else
             error('Site blocking flag must be On_Infinite, On_Finite, or Off')
         end
@@ -553,7 +553,7 @@ equilib_dark_sol.mu = mu_out;
                 which_frozen_chargestates_index = dummy_defects.defect_cs_lo(which_frozen_defects_index):dummy_defects.defect_cs_hi(which_frozen_defects_index);
                 Z = sum(Boltz_fac_rel(which_frozen_chargestates_index));  % this is the Z for this particular i17'th defect
                 N_chargestates(which_frozen_chargestates_index) = Tloop_conditions.fixed_defects_concentrations(which_frozen_defects_index)*Boltz_fac_rel(which_frozen_chargestates_index)/Z ;     % denom is a scalar.  Compute the conc of each charge state in defect i6 is Boltz factor/Z(i)*total conc  Totalconc is a scalar also - same for all chargestates of the give defetc
-                dG_cs_out(which_frozen_chargestates_index) = -Tloop_conditions.kBT_equilibrium*log(N_chargestates(which_frozen_chargestates_index)'./dummy_defects.cs_prefactor(which_frozen_chargestates_index));   % compute the dG that would give the concentration we just calculated and repalce the one calculated the normal way
+                dG_cs_out(which_frozen_chargestates_index) = -Tloop_conditions.kBT_equilibrium*log(N_chargestates(which_frozen_chargestates_index)'./dummy_defects.cs_tot_prefactor(which_frozen_chargestates_index));   % compute the dG that would give the concentration we just calculated and repalce the one calculated the normal way
             end
 
         else

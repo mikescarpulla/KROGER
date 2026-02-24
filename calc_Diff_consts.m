@@ -31,16 +31,11 @@ if size(cs_concs,1)~=1
     error('cs_concs can only be for one T, columns for all chargestates')
 end
 
-% get the max number of diffusion modes exist in the defect database
-# make this be part of the defect database - no need to compute it over and over
-num_D_modes = size(defects.Doo, 2);
-
-#make this so that all 4 of the defects.cs_D_   variables have the same number of columns (1 col per distinct mode defined by the 4-vector Do, Ea, mediating site, mediating cs)
-
 
 % check that the sizes of all the variables are right for the case of
-% having multiple diffusion modes
-if size(defects.cs_D_Doo,2)~=num_D_modes && size(defects.Emig,2)~=num_D_modes && size(defects.cs_D_mediated_by_cs,2)~=num_D_modes && size(defects.cs_D_mediated_by_site,2)~=num_D_modes
+% having multiple diffusion modes.  defects.num_D_modes = max number of
+% modes for any chargestate in the whole database
+if size(defects.cs_D_Doo,2)~=defects.num_D_modes && size(defects.Emig,2)~=defects.num_D_modes && size(defects.cs_D_mediated_by_cs,2)~=defects.num_D_modes && size(defects.cs_D_mediated_by_site,2)~=defects.num_D_modes
     error('For each diffusion mode, Doo, E_mig, D_mediated_by_cs, and D_mediated_by_site must all have one entry per chargestate as rows and the same number of columns as eachother')
 end
 
@@ -48,19 +43,19 @@ end
 % diffusion, and the number of mediating defects for each mode.
 % Both of these will be num_cs x max_num_D_modes matrices
 site_occ_fracs = site_occupation_fracs(conditions, defects, cs_concs);  % should yield a 1xN vector with numbers 0-1
-cs_fracs = cs_concs ./ defects.cs_prefactor;  % should yield a num_chargestates x 1 col vec
+cs_fracs = cs_concs(:) ./ defects.cs_tot_prefactor;  % should yield a num_chargestates x 1 col vec
 
-cs_D = zeros(defects.num_chargestates, num_D_modes);  % initialize holders as zeros
-Do = zeros(defects.num_chargestates, num_D_modes);
+cs_D = zeros(defects.num_chargestates, defects.num_D_modes);  % initialize holders as zeros
+Do = zeros(defects.num_chargestates, defects.num_D_modes);
 
 % for each chargestate, calculate the Arrhenius prefactor for each mode of
 % diffusion.  This is Doo * (1-occupied site_needed fraction) * (num_mediators/max_num_mediators) for each mode of diffusion.
 % The total diffusion constant is the sum over D for the different diffusion modes
 for i=1:defects.num_chargestates
-    for j=1:num_D_modes
+    for j=1:defects.num_D_modes
         if defects.cs_D_mediated_by_cs(i,j)==0
             Do(i,j) = defects.cs_D_Doo(i,j) * (1-site_occ_fracs(defects.cs_D_mediated_by_site(i,j)));   % compute the Do for each mode j of each chargestate i - case where only a site is needed not a native defect
-        elseif defects.cs_D_mediated_by_cs(i,j)>=1 defects.cs_D_mediated_by_cs(i,j)<=defects.num_chargestates
+        elseif defects.cs_D_mediated_by_cs(i,j)>=1
             Do(i,j) = defects.cs_D_Doo(i,j) * (1-site_occ_fracs(defects.cs_D_mediated_by_site(i,j))) * cs_fracs(defects.cs_D_mediated_by_cs(i,j));  %compute the Do for each mode j of each chargestate i
         else
             error("something weird about defects.cs_D_mediated_by_cs - there should be a number from 1-num_chargestates or a 0 in each place and the variable should have size num_cs x N where N is the max number of diffusion modes for any defect in the database.")
@@ -71,7 +66,7 @@ end
 
 
 
-% at this point, we have a num_chargestates x num_D_modes array of
+% at this point, we have a num_chargestates x defects.num_D_modes array of
 % diffusion constants.  Now we want to sum them for all the modes and
 % chargestates for each defect.
 
@@ -87,13 +82,10 @@ for k = 1:defects.num_defects
     abs_row_index = row_index + (cs_indices(1)-1);  %index back to the whole list of chargestates
 
 
-# working in this section below.  
-have to reconcile / make a system for listing all the diffusion modes, each of which includes some sites and mediating defects.  
-
 
     % pick out the instance that has the lowest Emig - that one has best
     % chance of giving the max diffusion length during cooling
-    if numel(row_index)=1
+    if numel(row_index)==1
         Emig_maxD = defects.cs_D_Emig(abs_row_index);
         Do_maxD = Do(row_index,col_index);
     elseif numel(row_index)>1
