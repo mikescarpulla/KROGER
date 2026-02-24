@@ -1,6 +1,6 @@
 % this function calculates the defect equilibrium Energies entered in eV,
 % concentrations entered in and come out in #/cm3 Defect charge state
-% formation enthalpy is assumed to be in the form dH = dHo + q*EF don't
+% formation enthalpy is assumed to be in the form dH = Eform + q*EF don't
 % mess with the location of the "end" for the main function - it is placed
 % so the subrouties are nested functions and thus can access the workspace
 % of the main function - letting them see the conditions, material, and
@@ -117,12 +117,12 @@ for i1 = 1:Tloop_conditions.num_T_equilibrium
 
     % handle T dependent dH values here
     %     if strcmp(dummy_conditions.T_dep_dH,'On')
-    %         Tloop_defects.dH = dummy_defects.dHoT(i1,:);
+    %         Tloop_defects.dH = dummy_defects.EformT(i1,:);
     %
     %     elseif strcmp(dummy_conditions.T_dep_dH,'Off')
     %         %% do nothing different
     %     else
-    %         error('T dependent fixed defects and or T dependent dHo flags
+    %         error('T dependent fixed defects and or T dependent Eform flags
     %         must be on or off')
     %     end
     %
@@ -352,7 +352,7 @@ end % close the for loop over temperatures indexed by i1
 %% Compute defect numbers by summing over chargstates in each defect.  Do this here at the end so the loop only runs one time %%
 defect_prefac = zeros(dummy_conditions.num_T_equilibrium, dummy_defects.num_defects);
 for i2 = 1:dummy_defects.num_defects
-    indices_of_all_cs_in_defect = find(dummy_defects.cs_ID == i2);  % will produce a column vector as long as cs_ID is a column vector
+    indices_of_all_cs_in_defect = find(dummy_defects.cs_defect_ID == i2);  % will produce a column vector as long as cs_defect_ID is a column vector
     N_defects_out(:,i2) = sum(N_chargestates_out(:,indices_of_all_cs_in_defect),2);  %sum all the chargestates in the defect to get its total number (col vector)
     for i3 = 1:dummy_conditions.num_T_equilibrium
         [~,dominant_cs_index] = max(N_chargestates_out(i3, indices_of_all_cs_in_defect));  %figure out the realtive position (1st, 2nd, 3rd etc) in the defect's chargestate list of the defect with highest concentration at each T
@@ -508,7 +508,7 @@ equilib_dark_sol.mu = mu_out;
 
         % figure out what to do about -TdS_vib term
         if strcmp(Tloop_conditions.vib_ent_flag,'3kB')
-            dG_vib_ent = 3*Tloop_conditions.kBT_equilibrium * sum(dummy_defects.cs_dm,2);  % this is TdS.  A vacacny has sum(cs_dm)=-1, and interstitial has +1.  dSvib = 3*kB*sum(cs_dm)*f(T) where f(T) is the classical or quantum function (positive numbers).  dG=dH-TdS = dH - 3kBT*f(T)*sum(dm).
+            dG_vib_ent = 3 * Tloop_conditions.kBT_equilibrium * sum(dummy_defects.cs_dm,2);  % this is TdS.  A vacacny has sum(cs_dm)=-1, and interstitial has +1.  dSvib = 3*kB*sum(cs_dm)*f(T) where f(T) is the classical or quantum function (positive numbers).  dG=dH-TdS = dH - 3kBT*f(T)*sum(dm).
         elseif strcmp(Tloop_conditions.vib_ent_flag,'Quantum')
             dG_vib_ent = 3 * Tloop_conditions.kBT_equilibrium * dSvib_quantum_per_mode(Tloop_conditions.T_equilibrium, Tloop_conditions.vibent_T0) * sum(dummy_defects.cs_dm,2);
         elseif strcmp(Tloop_conditions.vib_ent_flag,'Off')
@@ -521,7 +521,7 @@ equilib_dark_sol.mu = mu_out;
         %                                     
         % potential part, relative doesnt).
         % fixed dH0, then q*Ef term, then -TDSvib term.
-        dG_rel = dummy_defects.cs_dHo + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1) - dG_vib_ent;
+        dG_rel = dummy_defects.cs_Eform + dummy_defects.cs_charge*EF_full_mu_vec_dummy(1) - dG_vib_ent;
         dG_cs_out = dG_rel - dummy_defects.cs_dm*EF_full_mu_vec_dummy(2:end)';  % For the full dG the last thing is mu times number of atoms
 
         % compute concentrations from dG depending on what kind of site statistics chosen
@@ -550,7 +550,7 @@ equilib_dark_sol.mu = mu_out;
             % and overwrite effective dG values for them too.
             for i17 = 1:Tloop_conditions.num_fixed_defects     % loop through the fixed defects one at a time and assign their chargestates first
                 which_frozen_defects_index = Tloop_conditions.fixed_defects_index(i17);
-                which_frozen_chargestates_index = dummy_defects.cs_indices_lo(which_frozen_defects_index):dummy_defects.cs_indices_hi(which_frozen_defects_index);
+                which_frozen_chargestates_index = dummy_defects.defect_cs_lo(which_frozen_defects_index):dummy_defects.defect_cs_hi(which_frozen_defects_index);
                 Z = sum(Boltz_fac_rel(which_frozen_chargestates_index));  % this is the Z for this particular i17'th defect
                 N_chargestates(which_frozen_chargestates_index) = Tloop_conditions.fixed_defects_concentrations(which_frozen_defects_index)*Boltz_fac_rel(which_frozen_chargestates_index)/Z ;     % denom is a scalar.  Compute the conc of each charge state in defect i6 is Boltz factor/Z(i)*total conc  Totalconc is a scalar also - same for all chargestates of the give defetc
                 dG_cs_out(which_frozen_chargestates_index) = -Tloop_conditions.kBT_equilibrium*log(N_chargestates(which_frozen_chargestates_index)'./dummy_defects.cs_prefactor(which_frozen_chargestates_index));   % compute the dG that would give the concentration we just calculated and repalce the one calculated the normal way

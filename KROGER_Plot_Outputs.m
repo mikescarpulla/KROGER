@@ -23,7 +23,7 @@ clear i
 %% Plot Formation enthalpies vs EF at 300 K
 figure(1)
 EF = 0:conditions.EgRef/100:conditions.EgRef;
-dH_EF0 = defects.cs_dHo - defects.cs_dm*conditions.muT_equilibrium(1,:)' ;
+dH_EF0 = defects.cs_Eform - defects.cs_dm*conditions.muT_equilibrium(1,:)' ;
 for i=1:defects.num_chargestates
     f1line(i) = plot(EF, (dH_EF0(i) + defects.cs_charge(i)*EF),'DisplayName', defects.chargestate_names(i));
     f1line(i).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f1line(i).DisplayName},size(f1line(i).XData)));

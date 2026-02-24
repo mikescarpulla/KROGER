@@ -1,4 +1,4 @@
-function [SQ_dark_sol, SQ_conditions] = SQ_calculation_diffusion(dummy_defects, dummy_conditions)
+function [SQ_dark_sol, SQ_conditions] = SQ_calculation_reaction(dummy_defects, dummy_conditions)
 % important to do: need to make it so it calcs the mu values at the
 % current_Tfreeze for T dependent mu's or those set by 2nd phases
 
@@ -78,7 +78,8 @@ Tfreeze_ij_for_defect_k_holder = zeros(dummy_conditions.SQ_num_chardists, dummy_
 all_Tfreezes_ij_holder = zeros(dummy_conditions.SQ_num_chardists, dummy_conditions.SQ_num_Trates, max_possible_SQ_T_values);
 all_kBTfreezes_ij_holder = zeros(dummy_conditions.SQ_num_chardists, dummy_conditions.SQ_num_Trates, max_possible_SQ_T_values);
 
-% for each ij, there will be this many temperatures at which we actually calculate
+% for each ij, there will be this many temperatures we actually calculate
+% at
 num_unique_temps_this_ij = zeros(dummy_conditions.SQ_num_chardists, dummy_conditions.SQ_num_Trates);
 
 
@@ -113,9 +114,12 @@ SQ_dark_sol.defects = zeros(dummy_conditions.SQ_num_chardists, dummy_conditions.
 %% end initializing SQ_dark_sol
 
 
+
 % To do later: detect if any elements have a fixed number constraint - this will mean
 % that the defects containing that element may end up with conflicting
 % constraints when we go to freeze all of them
+
+
 
 
 max_num_actual_unique_Ts_for_all_ij = 0;  % this counts the max number of T's we calculate at over all the i,j pairs so we can trim zeros off the arrays after calc is done (trim the fat)
@@ -150,9 +154,7 @@ for i = 1:working_conditions.SQ_num_chardists
             % temperature points - like we dont want someone to input 298.15 K as the
             % stop, we want to use 300 K instead.
 
-            ## modify the Do here to include the effect of mediating defects here - so the Do has form Doo*[mediating defect]*exp(-Ea/kBT) 
-            % note that we are sending one defect at a time to the find_tfreeze routine 
-
+            Do = dummy_defects.cs_Do(k) * 
 
             defects_Tfreeze_this_ij(k) = round(SQ_find_Tfreeze_diffusion(working_conditions.SQ_lin_or_exp, working_conditions.SQ_T_start, working_conditions.SQ_T_end, working_conditions.SQ_chardists(i), working_conditions.SQ_Trates(j), dummy_defects.cs_Do(k), dummy_defects.cs_Emigration(k)));
 

@@ -91,8 +91,8 @@ FQ_dark_sol.dG_cs = -(dummy_conditions.kBT_equilibrium' * ones(1,dummy_defects.n
         Z = zeros(1,dummy_defects.num_defects);
         [dG_cs_rel] = dG_chargestates_rel(EF_dummy);
         Boltz_facs = exp(-dG_cs_rel/dummy_conditions.kBT_fullquench);
-        for i = 1:dummy_defects.num_defects  % loop over defects (defect.cs_ID) - not over charge states
-            indices = dummy_defects.cs_ID == i;  % find the indices of the charge states of the ith defect
+        for i = 1:dummy_defects.num_defects  % loop over defects (defect.cs_defect_ID) - not over charge states
+            indices = dummy_defects.cs_defect_ID == i;  % find the indices of the charge states of the ith defect
             Z(i) = sum(Boltz_facs(indices)); % matrix with Z value for each defect (computed from Boltz factors for each charge state in that defect
             N_chargestates_FQ(indices) = Boltz_facs(indices)/Z(i) * dummy_equilib_sol.defects(j,i);     % equilib_dark_sol.defects(j,i) is a scalar, Z(i) is a scalar
         end
@@ -111,7 +111,7 @@ FQ_dark_sol.dG_cs = -(dummy_conditions.kBT_equilibrium' * ones(1,dummy_defects.n
 
 
     function [dG_cs_rel] = dG_chargestates_rel(EF_dummy)
-        dG_cs_rel = dummy_defects.cs_dHo + dummy_defects.cs_charge * EF_dummy;  % compute the part without mu and without vibent
+        dG_cs_rel = dummy_defects.cs_Eform + dummy_defects.cs_charge * EF_dummy;  % compute the part without mu and without vibent
         if strcmp(dummy_conditions.vib_ent_flag,'3kB')
             dG_cs_rel = dG_cs_rel - 3*dummy_conditions.kBT_fullquench * sum(dummy_defects.cs_dm,2);  % last term is -TdS.  A vacacny has sum(cs_dm)=-1, and interstitial has +1.  dSvib = 3*kB*sum(cs_dm)*f(T) where f(T) is the classical or quantum function (positive numbers).  dG=dH-TdS = dH - 3kBT*f(T)*sum(dm).
         elseif strcmp(dummy_conditions.vib_ent_flag,'Quantum')

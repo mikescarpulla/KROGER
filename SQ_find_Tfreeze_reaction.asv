@@ -19,7 +19,7 @@
 
 
 
-function [T_freeze] = SQ_find_Tfreeze_diffusion(lin_or_exp, Tmax, Tmin, current_chardist, current_Trate, Do, Ea)
+function [T_freeze] = SQ_find_Tfreeze_reaction(lin_or_exp, Tmax, Tmin, current_chardist, current_Trate, Do, Ea)
 
 kB_eV = 8.617333262e-5;  % eV/K
 % kB_J = 1.380649e-23; % J/K
@@ -27,7 +27,11 @@ kB_eV = 8.617333262e-5;  % eV/K
 
 Tfreeze_int = (Tmax-Tmin)/100;  % this anticipates Tmax and Tmin might be numbers like 1800 K and 300 K.  So we generate a grid of 100 K increments 
 Tfreeze_list = Tmax:-Tfreeze_int:Tmin;   % coarse list of freezing temperatures across the whole temperature rnage.  essentially guesses on Tfreeze to bracket the actual one.   note the order from high T to low T 
-xdiff_list = DiffLength(Tfreeze_list);  % this has to be a function of only the 
+
+## what is the criterion here (not a distance but a rxn extent or fractional change in number or something like that)
+xdiff_list = DiffLength(Tfreeze_list);  
+## 
+
 
 if ~isreal(xdiff_list)
     error('Some values of xdiff_guesses were complex, so negative valies for difflength^2 generated')
@@ -101,26 +105,95 @@ end
         % Also there are differences in how the two programs define the
         % incomplete Gamma function.  Gamma_Mathematica[0,z] =
         % -Ei_Mathematica(-z) which turns into expint(z) in Matlab. 
-        % the solution for linear cooling in Mathematica 
-      
+
+
+        % the solution for linear cooling in Mathematica follows
         % precompute some quantities
         Xa = Ea/kB_eV;
         Xf = Xa./Tfreeze_list;
         Xm = Xa/Tmin;
-
         if strcmp(lin_or_exp,'lin')
             xdiff_list = sqrt( Do/current_Trate*( Tfreeze_list.*exp(-Xf) - Tmin*exp(-Xm) - Xa*real(expint(Xf)) + Xa*real(expint(Xm))) );  %triple checked these formulae from Mathematica MAS 1/27/26
         elseif strcmp(lin_or_exp,'exp')
-            xdiff_list = sqrt( Do/current_Trate * Tfreeze_list * real(expint(Xf)) );  % checked by MS 1-26-26
+            xdiff_list = sqrt( Do/current_Trate * Tfreeze_list * real(expint(Xf)) );  % checked by MS 1-26-26.  This is an approximate solution where T goes all the way to 0 Kelvin but not much will happen below room temp usually so it's pretty OK.  See Mathematica notebook from 1/26/2026 for details
         else
             error('exp_or_lin must be a string saying exp or lin')
         end
+
+
+
     end
+
+
 
 
     function [err] = err_func(Tfreeze)    % function to give the difflength - char_dist.  This will send in a scalar T_freeze
         err = DiffLength(Tfreeze) - current_chardist;
     end
+
+
+
+    function [Keq] = find_Keq(defects, rxns, kBT)
+        Keq = exp(-rxns.delta_G/kBT);
+    end
+
+
+
+
+    function [kf, kb] = rate_constants(rxns, defects, kBT)
+        % generate the current rate constants for all reactions given
+        % temperature and defect concentraitons (accounting for
+        % defetc-mediated diffusion).  Model is diffusion-limited capture
+        % model.  the rxns variable can hold different values for each
+        % complex - this will allow for example the inclusion of multiple reactions
+        % forming "excited states" of complexes - meaning the same two
+        % defects separated by different distances or on different pairs of
+        % sites and thus having different binding energies realtive to the separated defects.  In that case the capture radius should be the
+        % inter-defect spacing itself in that config. If configs of the
+        % complex are lumped together, then the cpature radius should be
+        % computed from kBT = -coulomb potential(r) - 
+        cs_D = diffusion_consts(defects, current_concentrtions, kBT);  % calc the D values for all defects at this T
+        Keq = find_Keq(defects, rxns, kBT);
+        for i=1:rxns.num_rxns
+            kf(i) = 4*pi*rxns.capture_radius(i)*(cs_D(rxns.reactants(i,1)) + cs_D(rxns.reactants(i,2)))*exp(-rxns.E_activation/kBT); % calculate kf including possibility of an activation barrier for the reaction
+        end
+        kb = kf./Keq;  % element-wide vector divide, compute 
+    end
+
+
+        function [D] = diffusion_consts(defects, current_concentrations, kBT)
+            % take in the temperature, defect database, and current
+            % concentraitons of defect and spit out the diffusion const for
+            % each chargestate
+
+        end
+       
+
+
+
+
+    function dC/dt  = rates(chargestate conc, n, p, sth1, sth2, reactions)
+
+
+
+
+
+        reactions = database of reactions amongst a set of chargestates
+        - have to list all possible reactions amongst chargestates and carriers (in general)
+        - only binary reactions
+        - list reactants and products in sorted order with no duplicates (check this upon forming the rxn database)
+        - will be a Nx2 matrix
+        - check that no reactans show up as products in same reaction
+        reactions are mass action kinetics with exponents same as stoich for the reaction
+
+
+
+
+
+
+
+
+
 
 
 end   %%% end main function

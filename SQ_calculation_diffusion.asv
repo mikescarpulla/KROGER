@@ -151,9 +151,7 @@ for i = 1:working_conditions.SQ_num_chardists
             % stop, we want to use 300 K instead.
 
             ## modify the Do here to include the effect of mediating defects here - so the Do has form Doo*[mediating defect]*exp(-Ea/kBT) 
-            % note that we are sending one defect at a time to the find_tfreeze routine 
-
-
+% 
             defects_Tfreeze_this_ij(k) = round(SQ_find_Tfreeze_diffusion(working_conditions.SQ_lin_or_exp, working_conditions.SQ_T_start, working_conditions.SQ_T_end, working_conditions.SQ_chardists(i), working_conditions.SQ_Trates(j), dummy_defects.cs_Do(k), dummy_defects.cs_Emigration(k)));
 
             % check if the calculated Tfreeze value is outside of the Tmax to Tmin range, set it to the nearby boundary value if it is.

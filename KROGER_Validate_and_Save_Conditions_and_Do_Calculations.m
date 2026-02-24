@@ -1,7 +1,7 @@
 % %% some automatic input validation before proceeding %%%%%%%%%%%%%%%%%%%%%%
 % if size(conditions.muT_equilibrium(1,:),2) ~= size(defects.cs_dm,2)
 %     error('number of rows in mu must equal number of columns in cs_dm')
-% elseif (size(defects.cs_dHo,1) ~= size(defects.cs_charge,1))
+% elseif (size(defects.cs_Eform,1) ~= size(defects.cs_charge,1))
 %     error('dE and cs_charge must be the same size')
 % elseif  ~= size(defects.cs_dm,2) ~= conditions.num_elements
 %     error('cs_dm is a matrix with rows for each defect and number of columns that should = number of elements')
