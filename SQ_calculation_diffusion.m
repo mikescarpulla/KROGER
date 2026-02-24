@@ -150,7 +150,7 @@ for i = 1:working_conditions.SQ_num_chardists
             % temperature points - like we dont want someone to input 298.15 K as the
             % stop, we want to use 300 K instead.
 
-            ## modify the Do here to include the effect of mediating defects here - so the Do has form Doo*[mediating defect]*exp(-Ea/kBT) 
+            ## modify the Do here to include the effect of mediating defects here - so the Do has form cs_D_Doo*[mediating defect]*exp(-Ea/kBT) 
             % note that we are sending one defect at a time to the find_tfreeze routine 
 
 

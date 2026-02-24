@@ -9,7 +9,7 @@ function [Do_maxD, Emig_maxD, D_maxD, D_tot] = calc_Diff_consts(cs_concs, condit
 % for each site.
 % so, if a chargestate has n modes of diffusion, Doo and Emig can be 1xn vectors.
 % total diffusion constant for each mode is:
-% D = Doo * (1-[num_mediating_sites_occupied]/[) * [mediating_defect]/[referecne_conc_mediating_defect] * exp(-Emig/kBT)
+% D = Doo * (1-[num_mediating_sites_occupied]/[num mediating sites possible]) * [mediating_defect]/[referecne_conc_mediating_defect] * exp(-Emig/kBT)
 % the sites
 % for now, we have decided to keep track of defects freezing out, not
 % individual chargestates. If we trcked chargestates in the main
@@ -32,11 +32,15 @@ if size(cs_concs,1)~=1
 end
 
 % get the max number of diffusion modes exist in the defect database
+# make this be part of the defect database - no need to compute it over and over
 num_D_modes = size(defects.Doo, 2);
+
+#make this so that all 4 of the defects.cs_D_   variables have the same number of columns (1 col per distinct mode defined by the 4-vector Do, Ea, mediating site, mediating cs)
+
 
 % check that the sizes of all the variables are right for the case of
 % having multiple diffusion modes
-if size(defects.Doo,2)~=num_D_modes && size(defects.Emig,2)~=num_D_modes && size(defects.cs_D_mediated_by_cs,2)~=num_D_modes && size(defects.cs_D_mediated_by_site,2)~=num_D_modes
+if size(defects.cs_D_Doo,2)~=num_D_modes && size(defects.Emig,2)~=num_D_modes && size(defects.cs_D_mediated_by_cs,2)~=num_D_modes && size(defects.cs_D_mediated_by_site,2)~=num_D_modes
     error('For each diffusion mode, Doo, E_mig, D_mediated_by_cs, and D_mediated_by_site must all have one entry per chargestate as rows and the same number of columns as eachother')
 end
 
@@ -44,7 +48,7 @@ end
 % diffusion, and the number of mediating defects for each mode.
 % Both of these will be num_cs x max_num_D_modes matrices
 site_occ_fracs = site_occupation_fracs(conditions, defects, cs_concs);  % should yield a 1xN vector with numbers 0-1
-cs_occ_fracs = cs_concs ./ defects.cs_prefactor;  % should yield a num_chargestates x 1 col vec
+cs_fracs = cs_concs ./ defects.cs_prefactor;  % should yield a num_chargestates x 1 col vec
 
 cs_D = zeros(defects.num_chargestates, num_D_modes);  % initialize holders as zeros
 Do = zeros(defects.num_chargestates, num_D_modes);
@@ -55,13 +59,13 @@ Do = zeros(defects.num_chargestates, num_D_modes);
 for i=1:defects.num_chargestates
     for j=1:num_D_modes
         if defects.cs_D_mediated_by_cs(i,j)==0
-            Do(i,j) = defects.cs_Doo(i,j) * (1-site_occ_fracs(defects.cs_D_mediated_by_site(i,j)));   % compute the Do for each mode j of each chargestate i - case where only a site is needed not a native defect
+            Do(i,j) = defects.cs_D_Doo(i,j) * (1-site_occ_fracs(defects.cs_D_mediated_by_site(i,j)));   % compute the Do for each mode j of each chargestate i - case where only a site is needed not a native defect
         elseif defects.cs_D_mediated_by_cs(i,j)>=1 defects.cs_D_mediated_by_cs(i,j)<=defects.num_chargestates
-            Do(i,j) = defects.cs_Doo(i,j) * (1-site_occ_fracs(defects.cs_D_mediated_by_site(i,j))) * cs_occ_fracs(defects.cs_D_mediated_by_cs(i,j));  %compute the Do for each mode j of each chargestate i
+            Do(i,j) = defects.cs_D_Doo(i,j) * (1-site_occ_fracs(defects.cs_D_mediated_by_site(i,j))) * cs_fracs(defects.cs_D_mediated_by_cs(i,j));  %compute the Do for each mode j of each chargestate i
         else
             error("something weird about defects.cs_D_mediated_by_cs - there should be a number from 1-num_chargestates or a 0 in each place and the variable should have size num_cs x N where N is the max number of diffusion modes for any defect in the database.")
         end
-        cs_D(i,j) = Do(i,j) * exp(-defects.cs_Emig(i,j)/kBT);    % compute the D value for each mode (same calc for any case)
+        cs_D(i,j) = Do(i,j) * exp(-defects.cs_D_Emig(i,j)/kBT);    % compute the D value for each mode (same calc for any case)
     end
 end
 
@@ -82,18 +86,23 @@ for k = 1:defects.num_defects
 
     abs_row_index = row_index + (cs_indices(1)-1);  %index back to the whole list of chargestates
 
+
+# working in this section below.  
+have to reconcile / make a system for listing all the diffusion modes, each of which includes some sites and mediating defects.  
+
+
     % pick out the instance that has the lowest Emig - that one has best
     % chance of giving the max diffusion length during cooling
     if numel(row_index)=1
-        Emig_maxD = defects.cs_Emig(abs_row_index);
+        Emig_maxD = defects.cs_D_Emig(abs_row_index);
         Do_maxD = Do(row_index,col_index);
     elseif numel(row_index)>1
-        Emig_maxD = defects.cs_Emig(abs_row_index(1),col_index(1));  % set as the first one
+        Emig_maxD = defects.cs_D_Emig(abs_row_index(1),col_index(1));  % set as the first one
         Do_maxD = Do(row_index(1),col_index(1));
 
         for i = 2:numel(row_index)
-            if Emig_maxD > defects.cs_Emig(abs_row_index(i),col_index(i))  % if the Ea is smaller than the first one, adopt it
-                Emig_maxD = defects.cs_Emig(abs_row_index(i),col_index(i));
+            if Emig_maxD > defects.cs_D_Emig(abs_row_index(i),col_index(i))  % if the Ea is smaller than the first one, adopt it
+                Emig_maxD = defects.cs_D_Emig(abs_row_index(i),col_index(i));
                 Do_maxD = Do(row_index(i),col_index(i));
             end
         end

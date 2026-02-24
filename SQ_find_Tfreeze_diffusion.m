@@ -1,7 +1,7 @@
 %% function that computes the Tfreeze for each defect based on diffusion length for cooling at a constant rate from Tmax to Tfreeze
 % T(t) = Tmax - rate*time
 
-% Arrhenius equation asssumed for D(T) Do.*exp(-Ea./kB.*T(t)).
+% Arrhenius equation asssumed for D(T) Do.*exp(-Emig./kB.*T(t)).
 % expression originally derived in mathematica.
 % The definition of expint in Matlab is % different from Mathematica's ExpIntEi.
 %  Expint(z) in matlab = integral(1./t.*exp(-t) from z to infinity.
@@ -14,12 +14,12 @@
 % current_chardist = scalar
 % current_Trates = scalar
 % Tmax, Tmin = scalar
-% Do, Ea = scalar
+% Do, Emig = scalar
 % Output T_freeze = vector
 
 
 
-function [T_freeze] = SQ_find_Tfreeze_diffusion(lin_or_exp, Tmax, Tmin, current_chardist, current_Trate, Do, Ea)
+function [T_freeze] = SQ_find_Tfreeze_diffusion(lin_or_exp, Tmax, Tmin, current_chardist, current_Trate, Do, Emig)
 
 kB_eV = 8.617333262e-5;  % eV/K
 % kB_J = 1.380649e-23; % J/K
@@ -94,7 +94,7 @@ end
     function [xdiff_list] = DiffLength(Tfreeze_list)    % function for the equation to give difflength as function of the vector of starting guess Tfreeze values
         % in this function, the arguments of special functions can be in eV, but
         % the other factors all need to be watched for units
-        % Trates is a vector, T_freeze_guess is scalar, Do and Ea are
+        % Trates is a vector, T_freeze_guess is scalar, Do and Emig are
         % scalars
         % Notes: Herein we assume z is a real number.  ExpintEi in mathematica is (-1)*integral of (e-t)/t dt
         % from -z to infinity. Define this as Ei_Mathematica(z).  To convert to expint() function in matlab:   Ei_Mathematica = -expint(-z).  
@@ -104,12 +104,12 @@ end
         % the solution for linear cooling in Mathematica 
       
         % precompute some quantities
-        Xa = Ea/kB_eV;
-        Xf = Xa./Tfreeze_list;
-        Xm = Xa/Tmin;
+        Xmig = Emig/kB_eV;
+        Xf = Xmig./Tfreeze_list;
+        Xm = Xmig/Tmin;
 
         if strcmp(lin_or_exp,'lin')
-            xdiff_list = sqrt( Do/current_Trate*( Tfreeze_list.*exp(-Xf) - Tmin*exp(-Xm) - Xa*real(expint(Xf)) + Xa*real(expint(Xm))) );  %triple checked these formulae from Mathematica MAS 1/27/26
+            xdiff_list = sqrt( Do/current_Trate*( Tfreeze_list.*exp(-Xf) - Tmin*exp(-Xm) - Xmig*real(expint(Xf)) + Xmig*real(expint(Xm))) );  %triple checked these formulae from Mathematica MAS 1/27/26
         elseif strcmp(lin_or_exp,'exp')
             xdiff_list = sqrt( Do/current_Trate * Tfreeze_list * real(expint(Xf)) );  % checked by MS 1-26-26
         else
