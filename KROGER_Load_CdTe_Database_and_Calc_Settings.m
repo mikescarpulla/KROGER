@@ -22,7 +22,9 @@ conditions.defect_db_pname = [];
 % [conditions.defect_db_fname,conditions.defect_db_pname] = uigetfile('*.mat','Select the defect database file you want to use');
 
 if ~ischar(conditions.defect_db_fname) || isempty(conditions.defect_db_fname)   %if the user doesnt pick one in the UIgetfile, do it manually here
-    conditions.defect_db_fname = 'CdTe_defects_Intuon_10062025.mat';
+    % conditions.defect_db_fname = 'CdTe_defects_Intuon_10062025.mat';
+    % conditions.defect_db_fname = 'CdTe_defects_database_with_renames.mat';
+    conditions.defect_db_fname = 'CdTe_defects_database_12192025_renames.mat';
 end
 
 if ~ischar(conditions.defect_db_pname) || isempty(conditions.defect_db_pname)

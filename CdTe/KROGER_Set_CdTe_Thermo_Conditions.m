@@ -7,7 +7,7 @@
 % So it's worth doing a fine T grid for long calcuations so you dont have
 % to ever do it over.
 
-conditions.T_equilibrium = 900:-20:300;  % row vector of T in K at which to compute the equilirium
+conditions.T_equilibrium = 1200:-20:300;  % row vector of T in K at which to compute the equilirium
 
 conditions.num_T_equilibrium = numel(conditions.T_equilibrium);
 conditions.kBT_equilibrium = conditions.kB * conditions.T_equilibrium;
@@ -109,7 +109,7 @@ conditions.mu_constant_flag = ones(1,conditions.num_elements);
 conditions.mu_from_2nd_phases_flag = zeros(1,conditions.num_elements);   % set all to zero/false first then overwrite if needed
 
 % both of these options will overwrite entries in this variable intialized here - this is the one the actual calc uses (so dont change its name unless doing it inside the main calc too)
-conditions.muT_equilibrium = -30*ones(conditions.num_T_equilibrium, defects.numelements); %
+conditions.muT_equilibrium = -30*ones(conditions.num_T_equilibrium, defects.num_elements); %
 
 %% Matrix elements: set mu values first (first 2 columns for a binary, first 3 for a ternary, etc)
 [mu_Cd, mu_Te] = Cd_Te_CdTe_chem_potentials_from_conditions(conditions);
@@ -125,16 +125,32 @@ conditions.muT_equilibrium(:,2) = mu_Te;
 % Ga can exclude other ranges for some elements, ..)
 % [impurity_mu_boundary_limits] = impurity_mu_limit_imposed_by_pO2(conditions.T_equilibrium, conditions.P_tot, conditions.P_units, mu_Te);  % note this function's output first column is the first impurity element
 
-G0_Cd3As2 = G0_Cd3As2_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
-% G0_As2Te3 = G0_As2Te3_ls(conditions.num_T_equilibrium, conditions.P_tot, 1, conditions.P_units);
+G_Cd3As2 = G_Cd3As2_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
+G_As2Te3 = G_As2Te3_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
+G_AsTe = G_AsTe_gv(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
+G_As_ls = G_As_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
+G_As_gv = G_As_gv(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
+G_As2 = G_As2_gv(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
+G_As3 = G_As3_gv(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
+G_As4 = G_As4_gv(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
 
+mu_Cd_gv = G_Cd_gv(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
 
-As_mu_limit_Cd3As2 = (G0_Cd3As2 - 3*mu_Cd)/2;
-% As_mu_limit_As2Te3 = (G0_As2Te3 - 3*mu_Te)/2;
+As_mu_limit_Cd3As2 = (G_Cd3As2 - 3*mu_Cd_gv)/2;
+As_mu_limit_Cd3As2_ls = (G_Cd3As2 - 3*mu_Cd)/2;
+As_mu_limit_As2Te3 = (G_As2Te3 - 3*mu_Te)/2;
+As_mu_limit_AsTe = (G_AsTe - mu_Te);
+As_mu_limit_As_ls = G_As_ls;
+As_mu_limit_As_gv = G_As_gv;
+As_mu_limit_As2 = G_As_gv/2;
+As_mu_limit_As3 = G_As_gv/3;
+As_mu_limit_As4 = G_As_gv/4;
 
 
 % mu_As_lim = min([As_mu_limit_Cd3As2 As_mu_limit_As2Te3 ],[],2);
-mu_As_lim = min(As_mu_limit_Cd3As2,[],2);
+% mu_As_lim = min([As_mu_limit_Cd3As2 As_mu_limit_As2Te3 As_mu_limit_As_ls],[],2);
+mu_As_lim = min([As_mu_limit_Cd3As2 As_mu_limit_Cd3As2_ls As_mu_limit_As2Te3 As_mu_limit_AsTe As_mu_limit_As_ls As_mu_limit_As_gv As_mu_limit_As2 As_mu_limit_As3 As_mu_limit_As4],[],2);
+
 
 As_mu_num = 5;
 conditions.mu_from_2nd_phases_flag(As_mu_num) = 1;
@@ -200,8 +216,8 @@ conditions.fixed_elements_mu_ranges = zeros(conditions.num_elements,2);   % crea
 
 
 %% Fix As doping 
-% % % % conditions.fixed_conc_flag(5) = 1;          % fix As
-% % % % conditions.mu_set_flag(5) = 0;              % flip the flag saying Si is set by mu
+% % % conditions.fixed_conc_flag(5) = 1;          % fix As
+% % % conditions.mu_set_flag(5) = 0;              % flip the flag saying Si is set by mu
 % conditions.fixed_conc_values(5) = 1e17;     % specify the value
 % lo_mu_As = -10; % set range to search for the unknown mu
 % hi_mu_As = -2;
@@ -217,9 +233,9 @@ conditions.fixed_elements_mu_ranges = zeros(conditions.num_elements,2);   % crea
 
 % default is no elements fixed - catch if nothing entred.
 if ~isfield(conditions,'fixed_conc_flag') || sum(isempty(conditions.fixed_conc_flag))
-    conditions.fixed_conc_flag = zeros(defects.numelements,1);
+    conditions.fixed_conc_flag = zeros(defects.num_elements,1);
 elseif ~isfield(conditions,'fixed_conc_values') || sum(isempty(conditions.fixed_conc_values))
-    conditions.fixed_conc_values = zeros(defects.numelements,1);
+    conditions.fixed_conc_values = zeros(defects.num_elements,1);
 end
 
 % if something is not fixed but by accident it has a target conc set, jsut
@@ -233,7 +249,7 @@ conditions.num_fixed_elements = numel(conditions.indices_of_fixed_elements);
 
 if conditions.num_fixed_elements~=0
     for i=1:conditions.num_fixed_elements
-        msg = strcat('WARNING: Fixed concentration of element used for...',defects.elementnames(conditions.indices_of_fixed_elements(i)),'...Be sure you meant to do this.');
+        msg = strcat('WARNING: Fixed concentration of element used for...',defects.element_names(conditions.indices_of_fixed_elements(i)),'...Be sure you meant to do this.');
         disp(msg)
     end
 elseif conditions.num_fixed_elements==0
@@ -262,7 +278,7 @@ elseif any(both_mu_and_conc_flag)
 elseif size(conditions.muT_equilibrium,2)~=conditions.num_elements
     error('number of columns in mu array not equal to number of elements declared')
 elseif sum(sum(isinf(conditions.muT_equilibrium)))
-    error('Infinite mu detected - this happens when there is no model for G0 for the T requested for some substance(s)')
+    error('Infinite mu detected - this happens when there is no model for G for the T requested for some substance(s)')
 end
 
 clear both_mu_and_conc_flag neither_mu_nor_conc_flag

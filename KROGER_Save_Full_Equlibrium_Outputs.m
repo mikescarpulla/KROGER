@@ -1,7 +1,7 @@
 %% this has to come after a full equilibrium calculation
 
 %% compute the stoichiometry and element totals and write it to a file
-element_totals_headers = ['T_equilibrium (K)' defects.elementnames];
+element_totals_headers = ['T_equilibrium (K)' defects.element_names];
 element_totals_cell = [cellstr(element_totals_headers); num2cell([equilib_dark_sol.T_equilibrium equilib_dark_sol.element_totals])];
 writecell(element_totals_cell,strcat(conditions.save_pname,conditions.elements_save_fname),'Delimiter','tab','WriteMode','overwrite');
 disp('wrote element total concentrations to text file')
@@ -41,8 +41,8 @@ end
 %%%%%%%%%%% save the equilibrium outputs
 all_defects_out = cat(2,equilib_dark_sol.T_equilibrium, equilib_dark_sol.charge_bal_err, equilib_dark_sol.element_bal_err, equilib_dark_sol.tot_bal_err, equilib_dark_sol.mu, equilib_dark_sol.element_totals, conditions.EvT_equilibrium', conditions.EcT_equilibrium', equilib_dark_sol.EFn, equilib_dark_sol.EFp, equilib_dark_sol.Nd, equilib_dark_sol.Na, equilib_dark_sol.n, equilib_dark_sol.p, equilib_dark_sol.sth1, equilib_dark_sol.sth2, equilib_dark_sol.defects);
 all_chargestates_out = cat(2,equilib_dark_sol.T_equilibrium, equilib_dark_sol.charge_bal_err, equilib_dark_sol.element_bal_err, equilib_dark_sol.tot_bal_err, equilib_dark_sol.mu, equilib_dark_sol.element_totals, conditions.EvT_equilibrium', conditions.EcT_equilibrium', equilib_dark_sol.EFn, equilib_dark_sol.EFp, equilib_dark_sol.Nd, equilib_dark_sol.Na, equilib_dark_sol.n, equilib_dark_sol.p, equilib_dark_sol.sth1, equilib_dark_sol.sth2, equilib_dark_sol.chargestates);
-all_defect_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units defects.elementnames 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.defect_names'];
-all_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units defects.elementnames 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.chargestate_names'];
+all_defect_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units defects.element_names 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.defect_names'];
+all_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units defects.element_names 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.cs_names'];
 all_defects_cell = [cellstr(all_defect_headers); num2cell(all_defects_out)];
 all_chargestates_cell = [cellstr(all_chargestate_headers); num2cell(all_chargestates_out)];
 all_elements_out = cat(2,equilib_dark_sol.T_equilibrium, equilib_dark_sol.element_totals);
@@ -53,7 +53,7 @@ sig_chargestates_index = find(max(equilib_dark_sol.chargestates,[],1)>=condition
 sig_defects_out = cat(2,equilib_dark_sol.T_equilibrium, equilib_dark_sol.charge_bal_err, equilib_dark_sol.element_bal_err, equilib_dark_sol.tot_bal_err, equilib_dark_sol.mu, conditions.EvT_equilibrium', conditions.EcT_equilibrium', equilib_dark_sol.EFn, equilib_dark_sol.EFp, equilib_dark_sol.Nd, equilib_dark_sol.Na, equilib_dark_sol.n, equilib_dark_sol.p, equilib_dark_sol.sth1, equilib_dark_sol.sth2, equilib_dark_sol.defects(:,sig_defects_index));
 sig_chargestates_out = cat(2,equilib_dark_sol.T_equilibrium, equilib_dark_sol.charge_bal_err, equilib_dark_sol.element_bal_err, equilib_dark_sol.tot_bal_err, equilib_dark_sol.mu, conditions.EvT_equilibrium', conditions.EcT_equilibrium', equilib_dark_sol.EFn, equilib_dark_sol.EFp, equilib_dark_sol.Nd, equilib_dark_sol.Na, equilib_dark_sol.n, equilib_dark_sol.p, equilib_dark_sol.sth1, equilib_dark_sol.sth2, equilib_dark_sol.chargestates(:,sig_chargestates_index));
 sig_defect_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.defect_names(sig_defects_index)'];
-sig_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.chargestate_names(sig_chargestates_index)'];
+sig_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.cs_names(sig_chargestates_index)'];
 sig_defects_cell = [cellstr(sig_defect_headers); num2cell(sig_defects_out)];
 sig_chargestates_cell = [cellstr(sig_chargestate_headers); num2cell(sig_chargestates_out)];
 

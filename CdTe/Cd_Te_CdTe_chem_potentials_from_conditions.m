@@ -28,26 +28,26 @@ elseif strcmp(conditions.T_dep_matrix_mu_flag,'On')   %% T dependent chemical po
     disp('using T-dependent chemical potentials')
 
     if strcmp(conditions.mu_conditions_flag,'CdTe_touching_Cd(l,s)')
-        mu_Cd = G0_Cd_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
-        mu_Te = G0_CdTe_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units) - mu_Cd;
+        mu_Cd = G_Cd_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
+        mu_Te = G_CdTe_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units) - mu_Cd;
 
     elseif strcmp(conditions.mu_conditions_flag,'CdTe_touching_Te(l,s)')
-        mu_Te = G0_Te_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
-        mu_Cd = G0_CdTe_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units) - mu_Te;
+        mu_Te = G_Te_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units);
+        mu_Cd = G_CdTe_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units) - mu_Te;
 
     elseif strcmp(conditions.mu_conditions_flag,'Cd_vapor_over_Cd_at_T_Cd')
-        G_Cd_condensed = G0_Cd_ls(conditions.T_Cd, conditions.P_tot, 1, conditions.P_units);
-        G_Cd_vap = G0_Cd_gv(conditions.T_Cd, conditions.P_tot, 1, conditions.P_units);
+        G_Cd_condensed = G_Cd_ls(conditions.T_Cd, conditions.P_tot, 1, conditions.P_units);
+        G_Cd_vap = G_Cd_gv(conditions.T_Cd, conditions.P_tot, 1, conditions.P_units);
         mu_Cd = conditions.P_ref*exp(-(G_Cd_vap-G_Cd_condensed)/(kB_eV*conditions.T_Cd));  % treating Cd vapor as ideal gas at the T_Cd
-        mu_Te = G0_CdTe_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units) - mu_Cd;
+        mu_Te = G_CdTe_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units) - mu_Cd;
 
     elseif strcmp(conditions.mu_conditions_flag,'Te2_vapor_over_Te_at_T_Te')
         % here we approximate the vapor as being only Te2
-        % dG_Te2 = 1/2*G0_Te2_gv(conditions.T_Te, conditions.P_ref, 1, conditions.P_units) - G0_Te_ls(conditions.T_Te, conditions.P_ref, 1, conditions.P_units);
+        % dG_Te2 = 1/2*G_Te2_gv(conditions.T_Te, conditions.P_ref, 1, conditions.P_units) - G_Te_ls(conditions.T_Te, conditions.P_ref, 1, conditions.P_units);
         % p_Te2 = conditions.P_ref*exp(-2*(dG_Te2)/conditions.T_Te);  % vapor pressure of Te2 over Te at the Te temperature
         % mu_Te = 0.5*kB_eV*conditions.T_Te*log(p_Te2/conditions.P_ref);
-        mu_Te = G0_Te_ls(T,1,1,P_units) - G0_Te2_gv(T,conditions.P_tot,1,P_units)/2;  % this avoids computing pVap then taking ln of it - the 3 lines above do it that way
-        mu_Cd = G0_CdTe_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units) - mu_Te;
+        mu_Te = G_Te_ls(T,1,1,P_units) - G_Te2_gv(T,conditions.P_tot,1,P_units)/2;  % this avoids computing pVap then taking ln of it - the 3 lines above do it that way
+        mu_Cd = G_CdTe_ls(conditions.T_equilibrium, conditions.P_tot, 1, conditions.P_units) - mu_Te;
 
   
     % elseif strcmp(conditions.mu_conditions_flag,'CdTe_congruent_vapor_at_Tsource')  %as for CSS - Tequilib is the sample T while the vapor source could be higher 

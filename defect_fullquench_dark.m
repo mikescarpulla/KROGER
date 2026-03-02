@@ -12,7 +12,7 @@ FQ_dark_sol.T_equilibrium = dummy_equilib_sol.T_equilibrium;
 FQ_dark_sol.Nd = dummy_equilib_sol.Nd;
 FQ_dark_sol.Na = dummy_equilib_sol.Na;
 FQ_dark_sol.defect_names = dummy_equilib_sol.defect_names;
-FQ_dark_sol.chargestate_names = dummy_equilib_sol.chargestate_names;
+FQ_dark_sol.cs_names = dummy_equilib_sol.cs_names;
 FQ_dark_sol.defects = dummy_equilib_sol.defects;  % for fullquenching the total number of defects is constant but charge states and n, p can change
 FQ_dark_sol.dG_defects = dummy_equilib_sol.dG_defects;  % since defect numbers are fixed, so must be the dG for each defect.
 
