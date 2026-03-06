@@ -22,9 +22,9 @@ conditions.varshini_b = 160;
 % conditions.EcT_fraction = 0.25;
 % conditions.EcT_fraction = 0.5;
 % conditions.EcT_fraction = 0.375;
-% conditions.EcT_fraction = 0.50;     % what fraction of Eg(T)  happens in the CB?
+conditions.EcT_fraction = 0.50;     % what fraction of Eg(T)  happens in the CB?
 % conditions.EcT_fraction = 0.75;
-conditions.EcT_fraction = 0.80;   % From Intuon, it should be 80%
+% conditions.EcT_fraction = 0.80;   % From Intuon, it should be 80%
 % conditions.EcT_fraction = 1;
 conditions.EvT_fraction = 1-conditions.EcT_fraction;
 
@@ -55,10 +55,10 @@ N_iCd = 1.47e22;  %site 3
 N_iTe = 1.47e22;   %site 4
 conditions.num_sites = [N_Cd; N_Te; N_iCd; N_iTe];   % note this needs to be a column vector, dont change it to a row vector
 
-% % Calculate the numerical prefactor for each defect from defects.degen_factor_config, defects.degen_factor_elec, defects.cs_num_each_site, and conditions.num_sites
+% % Calculate the numerical prefactor for each defect from defects.degen_factor_config, defects.degen_factor_elec, defects.cs_num_sites_used, and conditions.num_sites
 
-%% defects.cs_num_each_site tells you the number of primitive unit cells needed to form each defect (assuming the sites of the crystal, including distinct interstitials like the ia, ib, ... in b-ga2O3, are counted such that there is one per primitive unit cell
-defects.cs_site_prefactor = sort((ones(defects.num_chargestates,1)*conditions.num_sites')./defects.cs_num_each_site,2);      % calculates the max number of each chargestate that could be formed, given the availability of each site type in the crystal (or unit cells, or supercells, whatever the basis for counting).  Then sorts by the rows ascending, so the first column becomes the max number we could form.  Its done with a sort becasue you end up with Inf when you divide by sites you need zero of
+%% defects.cs_num_sites_used tells you the number of primitive unit cells needed to form each defect (assuming the sites of the crystal, including distinct interstitials like the ia, ib, ... in b-ga2O3, are counted such that there is one per primitive unit cell
+defects.cs_site_prefactor = sort((ones(defects.num_chargestates,1)*conditions.num_sites')./defects.cs_num_sites_used,2);      % calculates the max number of each chargestate that could be formed, given the availability of each site type in the crystal (or unit cells, or supercells, whatever the basis for counting).  Then sorts by the rows ascending, so the first column becomes the max number we could form.  Its done with a sort becasue you end up with Inf when you divide by sites you need zero of
 defects.cs_site_prefactor = defects.cs_site_prefactor(:,1);  % toss out the other columns keeping only the first one, which should be the limiting one
 defects.cs_prefactor = defects.cs_degen_factor_config .* defects.cs_degen_factor_elec .* defects.cs_site_prefactor;
 

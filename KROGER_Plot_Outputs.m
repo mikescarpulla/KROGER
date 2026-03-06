@@ -1,6 +1,6 @@
 % conditions.figures_flag = 'On';
 % % conditions.figures_flag = 'Off';
-%
+%charge
 % if strcmp(conditions.figures_flag,'On')
 
 
@@ -25,7 +25,7 @@ figure(1)
 EF = 0:conditions.EgRef/100:conditions.EgRef;
 dH_EF0 = defects.cs_Eform - defects.cs_dm*conditions.muT_equilibrium(1,:)' ;
 for i=1:defects.num_chargestates
-    f1line(i) = plot(EF, (dH_EF0(i) + defects.cs_charge(i)*EF),'DisplayName', defects.chargestate_names(i));
+    f1line(i) = plot(EF, (dH_EF0(i) + defects.cs_q(i)*EF),'DisplayName', defects.cs_names(i));
     f1line(i).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f1line(i).DisplayName},size(f1line(i).XData)));
 end
 
@@ -117,7 +117,7 @@ if conditions.sth_flag==1
 
     for i=1:defects.num_chargestates
         if max(log10(equilib_dark_sol.chargestates(:,i))) >= conditions.plot_log10_min   % only plot defects that at some point rise above 1e10 /cm3 - this will cut down the legend size
-            f3line(i+3) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.chargestates(:,i)),'DisplayName', defects.chargestate_names(i));
+            f3line(i+3) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.chargestates(:,i)),'DisplayName', defects.cs_names(i));
             f3line(i+3).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f3line(i+3).DisplayName},size(f3line(i+3).XData)));
         end
     end
@@ -135,7 +135,7 @@ elseif conditions.sth_flag==0
 
     for i=1:defects.num_chargestates
         if max(log10(equilib_dark_sol.chargestates(:,i))) >= conditions.plot_log10_min   % only plot defects that at some point rise above 1e10 /cm3 - this will cut down the legend size
-            f3line(i+5) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.chargestates(:,i)),'DisplayName', defects.chargestate_names(i));
+            f3line(i+5) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.chargestates(:,i)),'DisplayName', defects.cs_names(i));
             f3line(i+5).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f3line(i+5).DisplayName},size(f3line(i+5).XData)));
         end
     end
@@ -168,7 +168,7 @@ datacursormode.Enable='on';   %turn on the datatip to give name of defect on mou
 % legend('n','p','|Nd-Na|')
 % for i=1:defects.num_chargestates
 %     if max(log10(fullquench_dark_sol.chargestates(:,i))) >= conditions.plot_log10_min   % only plot defects that at some point rise above 1e10 /cm3 - this will cut down the legend size
-%         f4line(i+3) = plot(conditions.T_equilibrium,log10(fullquench_dark_sol.chargestates(:,i)),'DisplayName', defects.chargestate_names(i));
+%         f4line(i+3) = plot(conditions.T_equilibrium,log10(fullquench_dark_sol.chargestates(:,i)),'DisplayName', defects.cs_names(i));
 %         f4line(i+3).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f4line(i+3).DisplayName},size(f4line(i+3).XData)));
 %     end
 % end
@@ -218,7 +218,7 @@ ylabel('Energies (eV)')
 %% Plot the mu values for the solution
 figure(6)
 
-for i=1:defects.numelements
+for i=1:defects.num_elements
     plot(conditions.T_equilibrium, equilib_dark_sol.mu)
 end
 
@@ -247,7 +247,7 @@ figure(7)
 
 
 for i = 1:conditions.num_elements
-    f7line(i) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.element_totals(:,i)),'DisplayName',defects.elementnames(i));
+    f7line(i) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.element_totals(:,i)),'DisplayName',defects.element_names(i));
     f7line(i).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f7line(i).DisplayName},size(f7line(i).XData)));
 end
 

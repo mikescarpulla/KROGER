@@ -368,7 +368,7 @@ clear indices_of_all_cs_in_defect defect_prefac dominant_cs_index i2 i3
 
 %% build up the solution structure
 equilib_dark_sol.defect_names = dummy_defects.defect_names;
-equilib_dark_sol.chargestate_names = dummy_defects.chargestate_names;
+equilib_dark_sol.cs_names = dummy_defects.cs_names;
 equilib_dark_sol.T_equilibrium = (dummy_conditions.T_equilibrium)';
 equilib_dark_sol.Nd = dummy_conditions.Nd*ones(dummy_conditions.num_T_equilibrium,1);
 equilib_dark_sol.Na = dummy_conditions.Na*ones(dummy_conditions.num_T_equilibrium,1);
@@ -647,7 +647,7 @@ equilib_dark_sol.mu = mu_out;
         %% check for valid imputs for fixed and open defects and elements
         if numel(CM_conditions.fixed_defects)~=dummy_defects.num_defects  % check if each defect has a 1 or 0
             error('Tloop_conditions.fixed_defects has to be same size as num_defects')
-        elseif numel(CM_conditions.fixed_conc_flag)~=dummy_defects.numelements  % check that each element part of the calculation is listed
+        elseif numel(CM_conditions.fixed_conc_flag)~=dummy_defects.num_elements  % check that each element part of the calculation is listed
             error('Tloop_conditions.fixed_conc_flag has to be same size as # elements')
         elseif sum(CM_conditions.fixed_defects) ~= CM_conditions.num_fixed_defects
             error('Something wrong with number of fixed defects')
