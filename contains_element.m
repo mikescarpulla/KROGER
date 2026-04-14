@@ -13,7 +13,7 @@ function [defects_with_element_fraction, chargestates_with_element_fraction, def
     num_Ts = numel(solution.T_equilibrium);
 
     defects_with_element_names = defects.defect_names(defects_contains_index);
-    chargestates_with_element_names = defects.chargestate_names(chargestates_contains_index);
+    chargestates_with_element_names = defects.cs_names(chargestates_contains_index);
 
     chargestates_with_element = solution.chargestates(:,chargestates_contains_index);
     defects_with_element = solution.defects(:,defects_contains_index);

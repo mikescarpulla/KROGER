@@ -1,6 +1,6 @@
 % conditions.figures_flag = 'On';
 % % conditions.figures_flag = 'Off';
-%charge
+%
 % if strcmp(conditions.figures_flag,'On')
 
 
@@ -218,7 +218,7 @@ ylabel('Energies (eV)')
 %% Plot the mu values for the solution
 figure(6)
 
-for i=1:defects.num_elements
+for i=1:defects.numelements
     plot(conditions.T_equilibrium, equilib_dark_sol.mu)
 end
 
@@ -246,7 +246,7 @@ ylim([-12 0])
 figure(7)
 
 
-for i = 1:conditions.num_elements
+for i = 1:conditions.
     f7line(i) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.element_totals(:,i)),'DisplayName',defects.element_names(i));
     f7line(i).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f7line(i).DisplayName},size(f7line(i).XData)));
 end

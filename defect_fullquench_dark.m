@@ -91,8 +91,8 @@ FQ_dark_sol.dG_cs = -(dummy_conditions.kBT_equilibrium' * ones(1,dummy_defects.n
         Z = zeros(1,dummy_defects.num_defects);
         [dG_cs_rel] = dG_chargestates_rel(EF_dummy);
         Boltz_facs = exp(-dG_cs_rel/dummy_conditions.kBT_fullquench);
-        for i = 1:dummy_defects.num_defects  % loop over defects (defect.cs_defect_ID) - not over charge states
-            indices = dummy_defects.cs_defect_ID == i;  % find the indices of the charge states of the ith defect
+        for i = 1:dummy_defects.num_defects  % loop over defects (defect.cs_ID) - not over charge states
+            indices = dummy_defects.cs_ID == i;  % find the indices of the charge states of the ith defect
             Z(i) = sum(Boltz_facs(indices)); % matrix with Z value for each defect (computed from Boltz factors for each charge state in that defect
             N_chargestates_FQ(indices) = Boltz_facs(indices)/Z(i) * dummy_equilib_sol.defects(j,i);     % equilib_dark_sol.defects(j,i) is a scalar, Z(i) is a scalar
         end

@@ -8,7 +8,7 @@ hold on
 % check to make sure the hi, lo, and increments are decresing
 if dummy_conditions.SQ_T_step>0
     dummy_conditions.SQ_T_step = -dummy_conditions.SQ_T_step;
-elseif dummy_conditions.SQ_T_start < dummy_conditions.SQ_T_end  % flip the start and end values
+elseif dummy_conditions.SQ_T_start < dummy_conditions.SQ_T_end
     temp = dummy_conditions.SQ_T_end;
     dummy_conditions.SQ_T_end = dummy_conditions.SQ_T_start;
     dummy_conditions.SQ_T_start = temp;
@@ -25,7 +25,6 @@ end
 % values at a time.  So, as we go down in T for each i,j we need to reset all the defects to their original frozen/open state.
 % So dont delete or modify the incoming dummy_conditions.
 % also copy dummy_conditions to SQ_conditions that we will output
-% so yes it makes sense to make 2 copies of the variable here.
 SQ_conditions = dummy_conditions;
 working_conditions = dummy_conditions;
 
@@ -56,7 +55,7 @@ working_conditions.EvT_equilibrium = [];
 
 % in the script that calls this pogram, we define 1 K steps from Thigh to Tlow so that we get all
 % the needed things like mu and Eg for every T in 1 K spaced intervals.
-% But we dont necessarily want to do the full SQ calc starting from each 1
+% But we dont nexessarily want to do the full SQ calc starting from each 1
 % K - probably we want it at like every 100 K or 50 K.  So these
 % temperatures give the ones we will atually start from.
 % these two things dont exist in the incoming conditions vector - create new
@@ -78,14 +77,15 @@ Tfreeze_ij_for_defect_k_holder = zeros(dummy_conditions.SQ_num_chardists, dummy_
 all_Tfreezes_ij_holder = zeros(dummy_conditions.SQ_num_chardists, dummy_conditions.SQ_num_Trates, max_possible_SQ_T_values);
 all_kBTfreezes_ij_holder = zeros(dummy_conditions.SQ_num_chardists, dummy_conditions.SQ_num_Trates, max_possible_SQ_T_values);
 
-% for each ij, there will be this many temperatures at which we actually calculate
+% for each ij, there will be this many temperatures we actually calculate
+% at
 num_unique_temps_this_ij = zeros(dummy_conditions.SQ_num_chardists, dummy_conditions.SQ_num_Trates);
 
 
 %% build up the solution holder variable SQ_dark_sol
 % These variables have well-defined sizes independnet of how many T's we calculate at
 SQ_dark_sol.defect_names = dummy_defects.defect_names;
-SQ_dark_sol.chargestate_names = dummy_defects.chargestate_names;
+SQ_dark_sol.cs_names = dummy_defects.cs_names;
 SQ_dark_sol.SQ_Trates = dummy_conditions.SQ_Trates;
 SQ_dark_sol.SQ_chardists = dummy_conditions.SQ_chardists;
 
@@ -113,9 +113,12 @@ SQ_dark_sol.defects = zeros(dummy_conditions.SQ_num_chardists, dummy_conditions.
 %% end initializing SQ_dark_sol
 
 
+
 % To do later: detect if any elements have a fixed number constraint - this will mean
 % that the defects containing that element may end up with conflicting
 % constraints when we go to freeze all of them
+
+
 
 
 max_num_actual_unique_Ts_for_all_ij = 0;  % this counts the max number of T's we calculate at over all the i,j pairs so we can trim zeros off the arrays after calc is done (trim the fat)
@@ -137,23 +140,11 @@ for i = 1:working_conditions.SQ_num_chardists
         working_conditions.num_fixed_defects = dummy_conditions.num_fixed_defects;
 
 
-        % k loos over all the defects in the model
         defects_Tfreeze_this_ij = zeros(1,dummy_defects.num_defects);
+        % loop over all the defects in the model using k
         for k = 1:dummy_defects.num_defects
 
             % compute the Tfreezes for each defect and round them to nearest degree K
-
-            % question for Aadi and Mike: should we jsut hard code the T interval to be
-            % 1 K and thus not take SQ_T_step in as input?  Or should we modify this
-            % round operation to round to the nearest SQ_T_interval?
-            % also, we should round off Tstart and Tstop temperaturs to the same
-            % temperature points - like we dont want someone to input 298.15 K as the
-            % stop, we want to use 300 K instead.
-
-            ## modify the Do here to include the effect of mediating defects here - so the Do has form cs_D_Doo*[mediating defect]*exp(-Ea/kBT) 
-            % note that we are sending one defect at a time to the find_tfreeze routine 
-
-
             defects_Tfreeze_this_ij(k) = round(SQ_find_Tfreeze_diffusion(working_conditions.SQ_lin_or_exp, working_conditions.SQ_T_start, working_conditions.SQ_T_end, working_conditions.SQ_chardists(i), working_conditions.SQ_Trates(j), dummy_defects.cs_Do(k), dummy_defects.cs_Emigration(k)));
 
             % check if the calculated Tfreeze value is outside of the Tmax to Tmin range, set it to the nearby boundary value if it is.
@@ -249,8 +240,8 @@ for i = 1:working_conditions.SQ_num_chardists
             % determine the indices of the defects that will freeze at the current Tfreeze.  This can't exceed the numebr of defects.    There may be none for Tend and Tstart, but we need to do these Temperatures anyway.
             defects_freezing_now_index = find(defects_Tfreeze_this_ij == working_conditions.T_equilibrium);
             num_defects_freezing_now = numel(defects_freezing_now_index);
-            % this sometimes gives an empty 0x1 so just in case do these
-            % also so that nothing weird happens
+            % this sometimes gives an empty 0x1 so just in case do these so
+            % nothing weird happens
             if isempty(defects_freezing_now_index)
                 % defects_freezing_now_index = []; %this is redundant with
                 % the if condition
@@ -265,7 +256,7 @@ for i = 1:working_conditions.SQ_num_chardists
             % any elements with fixed concentrations.  the calc engine does
             % this automatically when T_equilibrium is a vector, but in the
             % SQ calc we are sending T values one at a time to it.  So have
-            % to build in the same functionality here.
+            % to do the same functionality here.
 
             % the main calculation at each T is done inside this if loop
             if l==1

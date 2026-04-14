@@ -2,13 +2,26 @@
 clear all
 clc
 
-
 %% set Physical Constants  %%%%%%%%%
 conditions.q = 1.602176565e-19;
 conditions.h = 6.62606957e-34;
 conditions.kB = 8.6173324e-5;
 conditions.mo = 9.1093837e-31;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Set problem definition and calc details by editing this section %%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%% future improvement - make this into a modular ingestion where you can
+%%% mix and match different subsets of all the defects and it will number
+%%% the chargestates automatically
+
 
 %%  Select the .mat file database of defect properties and load it %%%%%%%%
 %%% note: defects and chargestates listed down, one row per.  Elements
@@ -22,7 +35,8 @@ conditions.defect_db_pname = [];
 % [conditions.defect_db_fname,conditions.defect_db_pname] = uigetfile('*.mat','Select the defect database file you want to use');
 
 if ~ischar(conditions.defect_db_fname) || isempty(conditions.defect_db_fname)   %if the user doesnt pick one in the UIgetfile, do it manually here
-    conditions.defect_db_fname = 'CdTe_defects_Intuon_10062025.mat';
+    % conditions.defect_db_fname = 'Intuon_CdTe_09152024.mat';
+    conditions.defect_db_fname = 'Ga2O3_Varley_all_defects_new_072924.mat';
 end
 
 if ~ischar(conditions.defect_db_pname) || isempty(conditions.defect_db_pname)
@@ -52,9 +66,6 @@ end
 % end
 % clear ii
 % %%%%%%%%%%%%%%%%
-
-
-
 
 
 
@@ -90,9 +101,9 @@ conditions.plot_log10_max = 20;   %%% set upper bound for plots too.  The real n
 % min cutoff concentration for significant concentrations
 conditions.save_min = 1e12;  % set a minimum threshold for a defect or chargestate to be saved to the reduced output files (real number not log of it)
 
-conditions.stoich_flag = 'CdTe';
-% conditions.stoich_flag = 'Ga2O3';
-% conditions.stoich_flag = 'GaN';
+% conditions.stoich_flag = 'CdTe';
+conditions.stoich_flag = 'Ga2O3';
+conditions.stoich_flag = 'GaN';
 
 % save all the defects and chargestates or just the ones
 % conditions.save_files_flag = 'All';
@@ -101,8 +112,7 @@ conditions.save_files_flag = 'Sig_Only';  % save only the ones above the save_mi
 % conditions.defect_group_flag = 'On';
 conditions.defect_group_flag = 'Off';
 if strcmp(conditions.defect_group_flag,'On')
-    conditions.defect_grouping_fname = 'CdTe_grouping_defects.mat';
-    % conditions.defect_grouping_fname = 'Ga2O3_grouping_defects.mat';
+    conditions.defect_grouping_fname = 'Ga2O3_grouping_defects.mat';
     conditions.defect_grouping_pname = strcat(pwd,'\');
 end
 
@@ -130,6 +140,7 @@ conditions.sth_flag = 0;  % this turns on the STH's
 conditions.E_relax_sth1 = 0.0;  % relaxation energy for STH1's
 conditions.E_relax_sth2 = 0.0;  % relaxation energy for STH2's
 
+
 % set how to handle matrix chemical potentials
 conditions.T_dep_matrix_mu_flag = 'On';      % using actual thermochemistry
 % conditions.T_dep_matrix_mu_flag = 'Off';   % traditional way from most DFT papers - constant value vs T
@@ -139,13 +150,10 @@ conditions.T_dep_matrix_mu_flag = 'On';      % using actual thermochemistry
 % conditions.T_dep_fixed_defect_flag = 'On';
 conditions.T_dep_fixed_defect_flag = 'Off';
 
-% user can provide guesses for EF or Ef_mu_vec for each T_equilibrium that override automatic
-% searching for grid searches.  For particleswarm, this guess is just added to the population of particles.  
-% conditions.Ef_mu_guesses_supplied_flag = 'On';
-conditions.Ef_mu_guesses_supplied_flag = 'Off';
-% conditions.Ef_mu_guesses = [];  % this makes the variable but the user needs to put the right values into it at some point below.   
-% conditions.Ef_mu_guesses = ones(11,1)*[1 -2];  % guesses for [Ef mufixed1 mufixed2...] one row per temperature
-
+% paraequilibrium is when we assume that some of the defects like
+% interstitials will equilibrate like electrons in quenching.
+conditions.paraequilibrium_flag = 'On';
+% conditions.paraequilibrium_flag = 'Off';
 
 % adjust how fine the steps are for brute force search over Ef for quenching.  spacing = kBT/this.  kBT/2 is too coarse a lot of the time
 conditions.fullquench_EF_search_step_divisor = 5;
@@ -154,7 +162,6 @@ conditions.fullquench_EF_search_step_divisor = 5;
 % conditions.search_method_flag = 'grid_fminsearch';
 % conditions.search_method_flag = 'particleswarm_pattern';
 conditions.search_method_flag = 'particleswarm_pattern_simplex';
-
 conditions.search_method_quiet_flag = 'quiet';
 % conditions.search_method_quiet_flag = 'verbose';
 
@@ -182,13 +189,10 @@ elseif strcmp(conditions.search_method_flag,'particleswarm_pattern') || strcmp(c
     conditions.fixed_elements_swarm1_fine_factor = 3;
     conditions.fixed_elements_swarm1_min_size = 350;
     conditions.fixed_elements_swarm1_max_size = 15000;   %15000 seems to be ok upper limit on a laptop, 20000 is slow
-    conditions.fixed_elements_swarm1_ObjectiveLimit = 1e10;  % quit if the best value is better than this value
-
     conditions.fixed_elements_swarm2_fine_factor = 3;
     conditions.fixed_elements_swarm2_search_band_kB = 2; % we take the solution from the prior temperature and search within a band +/- this*kB for the next one
     conditions.fixed_elements_swarm2_min_size = 300;
     conditions.fixed_elements_swarm2_max_size = 15000;
-    conditions.fixed_elements_swarm2_ObjectiveLimit = 1e8;
 
     if strcmp(conditions.search_method_flag,'particleswarm_pattern_simplex')
         % these ones are for the final fminsearch after particleswarm is done.
