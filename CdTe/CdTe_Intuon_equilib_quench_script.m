@@ -98,9 +98,9 @@ end
 %
 % %%%%%%%%%%%%%%%%%% Manually increase dHo for Vga and complexes - numbers based on Varley 031424 database
 % for ii = [38:243 252:559 568:605 632:675]
-%     % defects.cs_dHo(ii) = defects.cs_dHo(ii) + 0.5;
-%     defects.cs_dHo(ii) = defects.cs_dHo(ii) - 0.5;
-%     % defects.cs_dHo(ii) = defects.cs_dHo(ii) - 1;
+%     % defects.cs_Eform(ii) = defects.cs_Eform(ii) + 0.5;
+%     defects.cs_Eform(ii) = defects.cs_Eform(ii) - 0.5;
+%     % defects.cs_Eform(ii) = defects.cs_Eform(ii) - 1;
 % end
 % clear ii
 % %%%%%%%%%%%%%%%%
@@ -379,7 +379,7 @@ conditions.num_sites = [N_Cd; N_Te; N_iCd; N_iTe];   % note this needs to be a c
 %% defects.cs_num_each_site tells you the number of primitive unit cells needed to form each defect (assuming the sites of the crystal, including distinct interstitials like the ia, ib, ... in b-ga2O3, are counted such that there is one per primitive unit cell
 defects.cs_site_prefactor = sort((ones(defects.num_chargestates,1)*conditions.num_sites')./defects.cs_num_each_site,2);      % calculates the max number of each chargestate that could be formed, given the availability of each site type in the crystal (or unit cells, or supercells, whatever the basis for counting).  Then sorts by the rows ascending, so the first column becomes the max number we could form.  Its done with a sort becasue you end up with Inf when you divide by sites you need zero of
 defects.cs_site_prefactor = defects.cs_site_prefactor(:,1);  % toss out the other columns keeping only the first one, which should be the limiting one
-defects.cs_prefactor = defects.cs_degen_factor_config .* defects.cs_degen_factor_elec .* defects.cs_site_prefactor;
+defects.cs_tot_prefactorfactor = defects.cs_degen_factor_config .* defects.cs_degen_factor_elec .* defects.cs_site_prefactor;
 
 clear N_Cd N_Te N_iCd N_iTe
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -467,7 +467,7 @@ conditions.mu_constant_flag = ones(1,conditions.num_elements);
 conditions.mu_from_2nd_phases_flag = zeros(1,conditions.num_elements);   % set all to zero/false first then overwrite if needed
 
 % both of these options will overwrite entries in this variable intialized here - this is the one the actual calc uses (so dont change its name unless doing it inside the main calc too)
-conditions.muT_equilibrium = -30*ones(conditions.num_T_equilibrium, defects.numelements); %
+conditions.muT_equilibrium = -30*ones(conditions.num_T_equilibrium, defects.num_elements); %
 
 %% Matrix elements: set mu values first (first 2 columns for a binary, first 3 for a ternary, etc)
 [mu_Cd, mu_Te] = Cd_Te_CdTe_chem_potentials_from_conditions(conditions);
@@ -635,9 +635,9 @@ conditions.fixed_elements_mu_ranges = zeros(conditions.num_elements,2);   % crea
 
 % default is no elements fixed - catch if nothing entred.
 if ~isfield(conditions,'fixed_conc_flag') || sum(isempty(conditions.fixed_conc_flag))
-    conditions.fixed_conc_flag = zeros(defects.numelements,1);
+    conditions.fixed_conc_flag = zeros(defects.num_elements,1);
 elseif ~isfield(conditions,'fixed_conc_values') || sum(isempty(conditions.fixed_conc_values))
-    conditions.fixed_conc_values = zeros(defects.numelements,1);
+    conditions.fixed_conc_values = zeros(defects.num_elements,1);
 end
 
 % if something is not fixed but by accident it has a target conc set, jsut
@@ -651,7 +651,7 @@ conditions.num_fixed_elements = numel(conditions.indices_of_fixed_elements);
 
 if conditions.num_fixed_elements~=0
     for i=1:conditions.num_fixed_elements
-        msg = strcat('WARNING: Fixed concentration of element used for...',defects.elementnames(conditions.indices_of_fixed_elements(i)),'...Be sure you meant to do this.');
+        msg = strcat('WARNING: Fixed concentration of element used for...',defects.element_names(conditions.indices_of_fixed_elements(i)),'...Be sure you meant to do this.');
         disp(msg)
     end
 elseif conditions.num_fixed_elements==0
@@ -863,8 +863,8 @@ disp('Saved problem specificaiton conditions to .mat file')
 %% some automatic input validation before proceeding %%%%%%%%%%%%%%%%%%%%%%
 if size(conditions.muT_equilibrium(1,:),2) ~= size(defects.cs_dm,2)
     error('number of rows in mu must equal number of columns in cs_dm')
-elseif (size(defects.cs_dHo,1) ~= size(defects.cs_charge,1))
-    error('dE and cs_charge must be the same size')
+elseif (size(defects.cs_Eform,1) ~= size(defects.cs_q,1))
+    error('dE and cs_q must be the same size')
     % elseif size(conditions.num_sites,1) ~= size(defects.cs_dm,2)
     %     error('sites is a column vector giving the number of lattice sites.  cs_dm is a matrix with rows for each defect and number of atoms added or subtracted from each site in the columns')
 elseif max(size(conditions.T_fullquench))~=1
@@ -887,9 +887,9 @@ end
 %% Plot Formation enthalpies vs EF at 300 K
 figure(1)
 EF = 0:conditions.EgRef/100:conditions.EgRef;
-dH_EF0 = defects.cs_dHo - defects.cs_dm*conditions.muT_equilibrium(1,:)' ;
+dH_EF0 = defects.cs_Eform - defects.cs_dm*conditions.muT_equilibrium(1,:)' ;
 for i=1:defects.num_chargestates
-    f1line(i) = plot(EF, (dH_EF0(i) + defects.cs_charge(i)*EF),'DisplayName', defects.chargestate_names(i));
+    f1line(i) = plot(EF, (dH_EF0(i) + defects.cs_q(i)*EF),'DisplayName', defects.cs_names(i));
     f1line(i).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f1line(i).DisplayName},size(f1line(i).XData)));
 end
 
@@ -915,7 +915,7 @@ toc
 
 
 
-element_totals_headers = ['T_equilibrium (K)' defects.elementnames];
+element_totals_headers = ['T_equilibrium (K)' defects.element_names];
 element_totals_cell = [cellstr(element_totals_headers); num2cell([equilib_dark_sol.T_equilibrium equilib_dark_sol.element_totals])];
 writecell(element_totals_cell,strcat(conditions.save_pname,conditions.elements_save_fname),'Delimiter','tab','WriteMode','overwrite');
 
@@ -926,8 +926,8 @@ writecell(element_totals_cell,strcat(conditions.save_pname,conditions.elements_s
 %%%%%%%%%%% save the outputs
 all_defects_out = cat(2,equilib_dark_sol.T_equilibrium, equilib_dark_sol.charge_bal_err, equilib_dark_sol.element_bal_err, equilib_dark_sol.tot_bal_err, equilib_dark_sol.mu, equilib_dark_sol.element_totals, conditions.EvT_equilibrium', conditions.EcT_equilibrium', equilib_dark_sol.EFn, equilib_dark_sol.EFp, equilib_dark_sol.Nd, equilib_dark_sol.Na, equilib_dark_sol.n, equilib_dark_sol.p, equilib_dark_sol.sth1, equilib_dark_sol.sth2, equilib_dark_sol.defects);
 all_chargestates_out = cat(2,equilib_dark_sol.T_equilibrium, equilib_dark_sol.charge_bal_err, equilib_dark_sol.element_bal_err, equilib_dark_sol.tot_bal_err, equilib_dark_sol.mu, equilib_dark_sol.element_totals, conditions.EvT_equilibrium', conditions.EcT_equilibrium', equilib_dark_sol.EFn, equilib_dark_sol.EFp, equilib_dark_sol.Nd, equilib_dark_sol.Na, equilib_dark_sol.n, equilib_dark_sol.p, equilib_dark_sol.sth1, equilib_dark_sol.sth2, equilib_dark_sol.chargestates);
-all_defect_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units defects.elementnames 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.defect_names'];
-all_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units defects.elementnames 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.chargestate_names'];
+all_defect_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units defects.element_names 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.defect_names'];
+all_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units defects.element_names 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.cs_names'];
 all_defects_cell = [cellstr(all_defect_headers); num2cell(all_defects_out)];
 all_chargestates_cell = [cellstr(all_chargestate_headers); num2cell(all_chargestates_out)];
 all_elements_out = cat(2,equilib_dark_sol.T_equilibrium, equilib_dark_sol.element_totals);
@@ -938,7 +938,7 @@ sig_chargestates_index = find(max(equilib_dark_sol.chargestates,[],1)>=condition
 sig_defects_out = cat(2,equilib_dark_sol.T_equilibrium, equilib_dark_sol.charge_bal_err, equilib_dark_sol.element_bal_err, equilib_dark_sol.tot_bal_err, equilib_dark_sol.mu, conditions.EvT_equilibrium', conditions.EcT_equilibrium', equilib_dark_sol.EFn, equilib_dark_sol.EFp, equilib_dark_sol.Nd, equilib_dark_sol.Na, equilib_dark_sol.n, equilib_dark_sol.p, equilib_dark_sol.sth1, equilib_dark_sol.sth2, equilib_dark_sol.defects(:,sig_defects_index));
 sig_chargestates_out = cat(2,equilib_dark_sol.T_equilibrium, equilib_dark_sol.charge_bal_err, equilib_dark_sol.element_bal_err, equilib_dark_sol.tot_bal_err, equilib_dark_sol.mu, conditions.EvT_equilibrium', conditions.EcT_equilibrium', equilib_dark_sol.EFn, equilib_dark_sol.EFp, equilib_dark_sol.Nd, equilib_dark_sol.Na, equilib_dark_sol.n, equilib_dark_sol.p, equilib_dark_sol.sth1, equilib_dark_sol.sth2, equilib_dark_sol.chargestates(:,sig_chargestates_index));
 sig_defect_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.defect_names(sig_defects_index)'];
-sig_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.chargestate_names(sig_chargestates_index)'];
+sig_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.cs_names(sig_chargestates_index)'];
 sig_defects_cell = [cellstr(sig_defect_headers); num2cell(sig_defects_out)];
 sig_chargestates_cell = [cellstr(sig_chargestate_headers); num2cell(sig_chargestates_out)];
 
@@ -997,7 +997,7 @@ EcT_fullquench_vec = conditions.EcT_fullquench*ones(size(fullquench_dark_sol.cha
 all_defects_out = cat(2,fullquench_dark_sol.T_equilibrium, fullquench_dark_sol.charge_bal_err, fullquench_dark_sol.element_bal_err, fullquench_dark_sol.tot_bal_err, fullquench_dark_sol.mu, conditions.EvT_equilibrium', conditions.EcT_equilibrium', fullquench_dark_sol.EFn, fullquench_dark_sol.EFp, fullquench_dark_sol.Nd, fullquench_dark_sol.Na, fullquench_dark_sol.n, fullquench_dark_sol.p, fullquench_dark_sol.sth1, fullquench_dark_sol.sth2, fullquench_dark_sol.defects);
 all_chargestates_out = cat(2,fullquench_dark_sol.T_equilibrium, fullquench_dark_sol.charge_bal_err, fullquench_dark_sol.element_bal_err, fullquench_dark_sol.tot_bal_err, fullquench_dark_sol.mu, conditions.EvT_equilibrium', conditions.EcT_equilibrium', fullquench_dark_sol.EFn, fullquench_dark_sol.EFp, fullquench_dark_sol.Nd, fullquench_dark_sol.Na, fullquench_dark_sol.n, fullquench_dark_sol.p, fullquench_dark_sol.sth1, fullquench_dark_sol.sth2, fullquench_dark_sol.chargestates);
 all_defect_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.defect_names'];
-all_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.chargestate_names'];
+all_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.cs_names'];
 all_defects_cell = [cellstr(all_defect_headers); num2cell(all_defects_out)];
 all_chargestates_cell = [cellstr(all_chargestate_headers); num2cell(all_chargestates_out)];
 
@@ -1007,7 +1007,7 @@ sig_chargestates_index = find(max(fullquench_dark_sol.chargestates,[],1)>=condit
 sig_defects_out = cat(2,fullquench_dark_sol.T_equilibrium, fullquench_dark_sol.charge_bal_err, fullquench_dark_sol.element_bal_err, fullquench_dark_sol.tot_bal_err, fullquench_dark_sol.mu, conditions.EvT_equilibrium', conditions.EcT_equilibrium', fullquench_dark_sol.EFn, fullquench_dark_sol.EFp, fullquench_dark_sol.Nd, fullquench_dark_sol.Na, fullquench_dark_sol.n, fullquench_dark_sol.p, fullquench_dark_sol.sth1, fullquench_dark_sol.sth2, fullquench_dark_sol.defects(:,sig_defects_index));
 sig_chargestates_out = cat(2,fullquench_dark_sol.T_equilibrium, fullquench_dark_sol.charge_bal_err, fullquench_dark_sol.element_bal_err, fullquench_dark_sol.tot_bal_err, fullquench_dark_sol.mu, conditions.EvT_equilibrium', conditions.EcT_equilibrium', fullquench_dark_sol.EFn, fullquench_dark_sol.EFp, fullquench_dark_sol.Nd, fullquench_dark_sol.Na, fullquench_dark_sol.n, fullquench_dark_sol.p, fullquench_dark_sol.sth1, fullquench_dark_sol.sth2, fullquench_dark_sol.chargestates(:,sig_chargestates_index));
 sig_defects_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.defect_names(sig_defects_index)'];
-sig_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.chargestate_names(sig_chargestates_index)'];
+sig_chargestate_headers = ['T_equilibrium (K)' 'charge_bal_err' 'element_bal_err' 'tot_bal_err' defects.mu_names_with_units 'Ev(T) (eV)' 'Ec(T) (eV)' 'Efn(eV)' 'Efp (eV)' 'Nd (#/cm3)' 'Na (#/cm3)' 'n (#/cm3)' 'p (#/cm3)' 'sth1 (#/cm3)' 'sth2 (#/cm3)' defects.cs_names(sig_chargestates_index)'];
 sig_defects_cell = [cellstr(sig_defect_headers); num2cell(sig_defects_out)];
 sig_chargestates_cell = [cellstr(sig_chargestate_headers); num2cell(sig_chargestates_out)];
 
@@ -1149,7 +1149,7 @@ legend('n equilib','p equilib', 'sth1 equilib', 'sth2 equilib', '|Nd-Na|', 'n qu
 
 for i=1:defects.num_chargestates
     if max(log10(equilib_dark_sol.chargestates(:,i))) >= conditions.plot_log10_min   % only plot defects that at some point rise above 1e10 /cm3 - this will cut down the legend size
-        f3line(i+3) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.chargestates(:,i)),'DisplayName', defects.chargestate_names(i));
+        f3line(i+3) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.chargestates(:,i)),'DisplayName', defects.cs_names(i));
         f3line(i+3).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f3line(i+3).DisplayName},size(f3line(i+3).XData)));
     end
 end
@@ -1167,7 +1167,7 @@ legend('n equilib','p equilib', '|Nd-Na|', 'n quench', 'p quench')
 
 for i=1:defects.num_chargestates
     if max(log10(equilib_dark_sol.chargestates(:,i))) >= conditions.plot_log10_min   % only plot defects that at some point rise above 1e10 /cm3 - this will cut down the legend size
-        f3line(i+5) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.chargestates(:,i)),'DisplayName', defects.chargestate_names(i));
+        f3line(i+5) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.chargestates(:,i)),'DisplayName', defects.cs_names(i));
         f3line(i+5).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f3line(i+5).DisplayName},size(f3line(i+5).XData)));
     end
 end
@@ -1200,7 +1200,7 @@ datacursormode.Enable='on';   %turn on the datatip to give name of defect on mou
 % legend('n','p','|Nd-Na|')
 % for i=1:defects.num_chargestates
 %     if max(log10(fullquench_dark_sol.chargestates(:,i))) >= conditions.plot_log10_min   % only plot defects that at some point rise above 1e10 /cm3 - this will cut down the legend size
-%         f4line(i+3) = plot(conditions.T_equilibrium,log10(fullquench_dark_sol.chargestates(:,i)),'DisplayName', defects.chargestate_names(i));
+%         f4line(i+3) = plot(conditions.T_equilibrium,log10(fullquench_dark_sol.chargestates(:,i)),'DisplayName', defects.cs_names(i));
 %         f4line(i+3).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f4line(i+3).DisplayName},size(f4line(i+3).XData)));
 %     end
 % end
@@ -1250,7 +1250,7 @@ ylabel('Energies (eV)')
 %% Plot the mu values for the solution
 figure(6)
 
-for i=1:defects.numelements
+for i=1:defects.num_elements
     plot(conditions.T_equilibrium, equilib_dark_sol.mu)
 end
 
@@ -1279,7 +1279,7 @@ figure(7)
 
 
 for i = 1:conditions.num_elements
-    f7line(i) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.element_totals(:,i)),'DisplayName',defects.elementnames(i));
+    f7line(i) = plot(conditions.T_equilibrium,log10(equilib_dark_sol.element_totals(:,i)),'DisplayName',defects.element_names(i));
     f7line(i).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f7line(i).DisplayName},size(f7line(i).XData)));
 end
 
@@ -1522,7 +1522,7 @@ clear all_chargestate_headers all_chargestates_cell sig_chargestate_headers sig_
 % legend('n_{equilib}','p_{equilib}','|Nd-Na|','n_{quench}','p_{quench}')
 %
 % for i=1:6  % defects dont change for quenching so only need to plot once.  Plot the atomic concentrations
-%     f8line(i+5) = plot(log_doping,log10(atom_holder(:,i)),'DisplayName', defects.elementnames(i));
+%     f8line(i+5) = plot(log_doping,log10(atom_holder(:,i)),'DisplayName', defects.element_names(i));
 %     f8line(i+5).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f8line(i+5).DisplayName},size(f8line(i+5).XData)));   %the i+5 here is becasue we have 5 lines above for carrier densities
 % end
 % legend show
@@ -1560,7 +1560,7 @@ clear all_chargestate_headers all_chargestates_cell sig_chargestate_headers sig_
 % num_mu_in_mu_vec = size(mu_vec,2);
 % % chargestate_holder = zeros(num_mu_in_mu_vec,defects.num_chargestates);
 % defect_holder = zeros(num_mu_in_mu_vec,defects.num_defects);
-% atom_holder = zeros(num_mu_in_mu_vec,defects.numelements);    % 6 corresponds to the list Ga O Si H Fe Sn
+% atom_holder = zeros(num_mu_in_mu_vec,defects.num_elements);    % 6 corresponds to the list Ga O Si H Fe Sn
 % equilib_carrier_holder = zeros(num_mu_in_mu_vec,3);
 % quench_carrier_holder = zeros(num_mu_in_mu_vec,3);
 %
@@ -1594,8 +1594,8 @@ clear all_chargestate_headers all_chargestates_cell sig_chargestate_headers sig_
 %     f9line(i+5).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f9line(i+3).DisplayName},size(f9line(i+3).XData)));
 % end
 % legend show
-% title(strcat('Concentrations at Fixed T vs_',defects.elementnames(conditions.Task5_element_num_to_vary_mu),' Chemical Potential'))
-% xlabel(strcat(defects.elementnames(conditions.Task5_element_num_to_vary_mu),' Chemical potential (eV)'))
+% title(strcat('Concentrations at Fixed T vs_',defects.element_names(conditions.Task5_element_num_to_vary_mu),' Chemical Potential'))
+% xlabel(strcat(defects.element_names(conditions.Task5_element_num_to_vary_mu),' Chemical potential (eV)'))
 % ylabel('Log_{10} Concentrations (#/cm^3)')
 % ylim([10 23])
 % datacursormode.Enable='on';   %turn on the datatip to give name of defect on mouse hover
@@ -1615,12 +1615,12 @@ clear all_chargestate_headers all_chargestates_cell sig_chargestate_headers sig_
 % legend('n_{equilib}','p_{equilib}','|Nd-Na|','n_{quench}','p_{quench}')
 %
 % for i=1:6  % defects dont change for quenching so only need to plot once.  Plot the atomic concentrations
-%     f10line(i+5) = plot(mu_vec,log10(atom_holder(:,i)),'DisplayName', defects.elementnames(i));
+%     f10line(i+5) = plot(mu_vec,log10(atom_holder(:,i)),'DisplayName', defects.element_names(i));
 %     f10line(i+5).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Series:',repmat({f10line(i+5).DisplayName},size(f10line(i+5).XData)));   %the i+5 here is becasue we have 5 lines above for carrier densities
 % end
 % legend show
 % title('Element Concentrations at Fixed T vs Shallow Doping')
-% xlabel(strcat(defects.elementnames(conditions.Task5_element_num_to_vary_mu),' Chemical potential (eV)'))
+% xlabel(strcat(defects.element_names(conditions.Task5_element_num_to_vary_mu),' Chemical potential (eV)'))
 % ylabel('Log_{10} Concentrations (#/cm^3)')
 % ylim([10 23])
 % datacursormode.Enable='on';   %turn on the datatip to give name of defect on mouse hover

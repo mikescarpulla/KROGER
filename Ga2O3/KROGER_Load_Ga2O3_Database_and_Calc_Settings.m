@@ -60,9 +60,9 @@ end
 %
 % %%%%%%%%%%%%%%%%%% Manually change dHo for Vga and complexes - numbers based on Varley 031424 database
 % for ii = [38:243 252:559 568:605 632:675]
-%     % defects.cs_dHo(ii) = defects.cs_dHo(ii) + 0.5;
-%     defects.cs_dHo(ii) = defects.cs_dHo(ii) - 0.5;
-%     % defects.cs_dHo(ii) = defects.cs_dHo(ii) - 1;
+%     % defects.cs_Eform(ii) = defects.cs_Eform(ii) + 0.5;
+%     defects.cs_Eform(ii) = defects.cs_Eform(ii) - 0.5;
+%     % defects.cs_Eform(ii) = defects.cs_Eform(ii) - 1;
 % end
 % clear ii
 % %%%%%%%%%%%%%%%%

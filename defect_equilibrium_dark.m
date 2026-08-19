@@ -69,7 +69,7 @@ if strcmp(dummy_conditions.Ef_mu_guesses_supplied_flag, 'On')
     if isempty(dummy_conditions.Ef_fixed_mu_guesses) || (max(size(dummy_conditions.Ef_fixed_mu_guesses)) ~= dummy_conditions.num_T_equilibrium) || (min(size(dummy_conditions.Ef_fixed_mu_guesses))~=dummy_conditions.num_fixed_elements + 1)
         error('If the conditions.Ef_fixed_mu_guesses field is present, it must have same number of rows as T_equilibrium and columns as num_fixed_elements + 1 and all be non-empty');
     elseif (max(size(dummy_conditions.Ef_fixed_mu_guesses)) == dummy_conditions.num_T_equilibrium) && (min(size(dummy_conditions.Ef_fixed_mu_guesses))==dummy_conditions.num_fixed_elements+1)
-        disp('Ef_fixed_mu_guesses have been supplied.  It is recommended to use this only if you really need to override the automatic guess generation and temperature dependent solution following...')
+        % disp('Ef_fixed_mu_guesses have been supplied.  It is recommended to use this only if you really need to override the automatic guess generation and temperature dependent solution following...')
     else
         error('something strange about the supplied conditions.Ef_fixed_mu_guesses')
     end
@@ -77,11 +77,10 @@ end
 
 
 
-
 %%%%%%%%% Main calculation - looped over all the equilibrium T's given.
 %%%%%%%%% Tloop_conditions holds only scalar variables and is updated for
 %%%%%%%%% each temperature, leaving the original conditions variabl alone
-disp('as of now, T dependences for mu and band parameters are being used.  Must add capabilities for other properties being T dependent if desired in future')
+% disp('as of now, T dependences for mu and band parameters are being used.  Must add capabilities for other properties being T dependent if desired in future')
 
 
 %% start the main loop over temperatures
@@ -90,7 +89,7 @@ for i1 = 1:Tloop_conditions.num_T_equilibrium
     Tloop_conditions.T_equilibrium = dummy_conditions.T_equilibrium(i1);  % each time through the T loop, set the values of T_equilibrium
     Tloop_conditions.kBT_equilibrium = dummy_conditions.kBT_equilibrium(i1);
     Tloop_conditions.num_T_equilibrium = 1;
-    disp(strcat('Starting calc for T=',num2str(Tloop_conditions.T_equilibrium),'K'))  % call out the start of calc for each T
+    % disp(strcat('Starting calc for T=',num2str(Tloop_conditions.T_equilibrium),'K'))  % call out the start of calc for each T
 
     % set the mu values for the current temperature.
     Tloop_conditions.muT_equilibrium = dummy_conditions.muT_equilibrium(i1,:);  % the mu values set here will be overwritten (ignored) for fixed elements as needed further down in the code
@@ -151,19 +150,19 @@ for i1 = 1:Tloop_conditions.num_T_equilibrium
     %% These are cases with no elements frozen. 1 is no defects frozen, 2 is some defects frozen.  We get the mu values from the conditions directly
     if Tloop_conditions.calc_method==1 || Tloop_conditions.calc_method ==2
 
-        disp('Calculation Method 1 or 2 running please be patient....')
+        % disp('Calculation Method 1 or 2 running please be patient....')
 
         if strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'Off')
             if i1==1
-                disp('Starting grid search of Ef to get close to first solution')
+                % disp('Starting grid search of Ef to get close to first solution')
                 EF_guess = EF_Guess12(Tloop_conditions);   % get a guess for EF close to minimum
-                disp('Found guess for first T, passing it off to fzero')
+                % disp('Found guess for first T, passing it off to fzero')
             elseif i1==2
                 EF_guess = EF_from_last_T;
-                disp('Using solution from prior temperature as guess for solution - make sure to space T values close enough for continuity')
+                % disp('Using solution from prior temperature as guess for solution - make sure to space T values close enough for continuity')
             elseif i1>=3
                 EF_guess = EF_from_last_T + 0.5*(Tloop_conditions.T_equilibrium - last_T)*(EF_from_last_T - EF_from_2nd_last_T)/(last_T - second_last_T);
-                disp('Using avg of prior solution and 1st order Taylor expansion as guess...')
+                % disp('Using avg of prior solution and 1st order Taylor expansion as guess...')
             end
         elseif strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'On')
             EF_guess = Tloop_conditions.Ef_mu_guuesses;
@@ -193,8 +192,8 @@ for i1 = 1:Tloop_conditions.num_T_equilibrium
 
         %% These are the cases where some elements are frozen.  3 is only elements frozen, 4 is elements and defects frozen
     elseif Tloop_conditions.calc_method==3 || Tloop_conditions.calc_method==4
-        disp('Calculation Method 3 or 4 running please be patient....')
-        disp('WARNING!!!: Remember, when element concentrations are fixed, it is possible that the desired solution is impossible to find within the limits of mu the user specified for each fixed element.  So check the results carefully and spend some time bracketing the solution by hand.  Remember that only complexes couple impurity elements together so you can vary one mu at a time for the most part. ')
+        % disp('Calculation Method 3 or 4 running please be patient....')
+        % disp('WARNING!!!: Remember, when element concentrations are fixed, it is possible that the desired solution is impossible to find within the limits of mu the user specified for each fixed element.  So check the results carefully and spend some time bracketing the solution by hand.  Remember that only complexes couple impurity elements together so you can vary one mu at a time for the most part. ')
 
         if strcmp(Tloop_conditions.search_method_flag,'particleswarm_pattern') || strcmp(Tloop_conditions.search_method_flag,'particleswarm_pattern_simplex')
             nvars = Tloop_conditions.num_fixed_elements + 1;
@@ -276,19 +275,19 @@ for i1 = 1:Tloop_conditions.num_T_equilibrium
                 Tloop_conditions.fixed_elements_mu_npoints = ceil(fine_factor*max_mu_range/start_kBT);
                 fminsearch_options = optimset('MaxFunEvals',Tloop_conditions.fixed_elements_fmin_MaxFunEvals,'MaxIter',Tloop_conditions.fixed_elements_fmin_MaxIter,'TolX',Tloop_conditions.fixed_elements_fmin_TolX,'TolFun',Tloop_conditions.fixed_elements_fmin_TolFun);  % may need to tune these settings
                 if i1==1
-                    disp('Starting grid search over Ef and mu for fixed elements to get close to the solution for the first T.  Remember that the number of grid points to look at scales as num^dim+1 where dim is the number of fixed elements and the +1 is for Ef');
+                    % disp('Starting grid search over Ef and mu for fixed elements to get close to the solution for the first T.  Remember that the number of grid points to look at scales as num^dim+1 where dim is the number of fixed elements and the +1 is for Ef');
                     tic
                     EF_fixed_mu_guess = EF_Fixed_Mu_Guess34(Tloop_conditions); % get a guess for EF and the fixed mu values close to minimum using trial and error
                     guess_time = toc;
-                    disp(strcat('Found guess for EF and mu values for fixed elements for first T in_',num2str(guess_time),'_sec.  Phew that took a while.  I need a shower, a beer, and to put my feet up.  Wait, you need me to keep going?  Fine if you insist, but you should try to bracket the solution better next time.'));
+                    % disp(strcat('Found guess for EF and mu values for fixed elements for first T in_',num2str(guess_time),'_sec.  Phew that took a while.  I need a shower, a beer, and to put my feet up.  Wait, you need me to keep going?  Fine if you insist, but you should try to bracket the solution better next time.'));
                 elseif i1==2
                     EF_fixed_mu_guess = EF_fixed_mu_from_last_T;
-                    disp('Using solution from prior temperature as guess for solution - make sure to space T values close enough for continuity')
+                    % disp('Using solution from prior temperature as guess for solution - make sure to space T values close enough for continuity')
                 elseif i1>=3
                     % this next lines calls back to the original conditions
                     % variable so it can see all the temperatures
                     EF_fixed_mu_guess = EF_fixed_mu_from_last_T + 0.5*((EF_fixed_mu_from_last_T - EF_fixed_mu_from_2nd_last_T)/(dummy_conditions.T_equilibrium(i1-1) - dummy_conditions.T_equilibrium(i1-2)))*(dummy_conditions.T_equilibrium(i1) - dummy_conditions.T_equilibrium(i1-1));
-                    disp('Using avg of prior solution and 1st order Taylor expansion as guess...')
+                    % disp('Using avg of prior solution and 1st order Taylor expansion as guess...')
                 end
 
             elseif strcmp(Tloop_conditions.Ef_mu_guesses_supplied_flag,'On')
@@ -309,7 +308,7 @@ for i1 = 1:Tloop_conditions.num_T_equilibrium
 
         % these items here are executed for cases 3&4 using any solver
         % option
-        disp(strcat('Found solution as__',num2str(EF_fixed_mu_vec_sol),'__for EF_fixed_mu_vec'))
+        % disp(strcat('Found solution as__',num2str(EF_fixed_mu_vec_sol),'__for EF_fixed_mu_vec'))
         EF_full_mu_vec_sol = Expand_Fixed_Mu_Vec_To_Full_Mu_Vec(EF_fixed_mu_vec_sol);  % expand it out to the full EF_mu_vec
         EF_out(i1) = EF_full_mu_vec_sol(1);  % pick off the optimized EF value
         mu_out(i1,:) = EF_full_mu_vec_sol(2:end);
@@ -318,9 +317,9 @@ for i1 = 1:Tloop_conditions.num_T_equilibrium
         charge_bal_err_out(i1) = Charge_Balance34(EF_fixed_mu_vec_sol);
         element_bal_err_out(i1) = sum(Fixed_Element_Balance34(EF_fixed_mu_vec_sol));
         tot_bal_err_out(i1) = Total_Balance34(EF_fixed_mu_vec_sol);
-        disp(strcat('charge_bal=',num2str(charge_bal_err_out(i1))));
-        disp(strcat('element_bal=',num2str(element_bal_err_out(i1))));
-        disp(strcat('tot_bal=',num2str(tot_bal_err_out(i1))));
+        % disp(strcat('charge_bal=',num2str(charge_bal_err_out(i1))));
+        % disp(strcat('element_bal=',num2str(element_bal_err_out(i1))));
+        % disp(strcat('tot_bal=',num2str(tot_bal_err_out(i1))));
 
 
         if i1>=2
@@ -842,7 +841,7 @@ equilib_dark_sol.mu = mu_out;
                 %                 zeros(numel(EF_grid),numel(mu1_grid));
 
                 num_grid_points = numel(EF_grid)*numel(mu1_grid);
-                disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
+                % disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
                 for i5 = 1:numel(EF_grid)
                     for i6 = 1:numel(mu1_grid)
                         current_EF_fixed_mu_vec = [EF_grid(i5) mu1_grid(i6)];         % create the current EF_fixed_mu_vec
@@ -869,10 +868,10 @@ equilib_dark_sol.mu = mu_out;
                 num_grid_points = numel(EF_grid)*numel(mu1_grid)*numel(mu2_grid);
                 %                 update_progress_num =
                 %                 floor(num_grid_points/10);
-                disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
+                % disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
                 for i5 = 1:numel(EF_grid)
                     percent_done = i5/numel(EF_grid)*100;
-                    disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
+                    % disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
                     for i6 = 1:numel(mu1_grid)
                         for i7 = 1:numel(mu2_grid)
                             current_EF_fixed_mu_vec = [EF_grid(i5) mu1_grid(i6) mu2_grid(i7)];    % create the current EF_fixed_mu_vec
@@ -891,10 +890,10 @@ equilib_dark_sol.mu = mu_out;
                 mu2_grid = cell2mat(mu_grid_holder(2));
                 mu3_grid = cell2mat(mu_grid_holder(3));
                 num_grid_points = numel(EF_grid)*numel(mu1_grid)*numel(mu2_grid)*numel(mu3_grid);
-                disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
+                % disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
                 for i5 = 1:numel(EF_grid)
                     percent_done = i5/numel(EF_grid)*100;
-                    disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
+                    % disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
                     for i6 = 1:numel(mu1_grid)
                         for i7 = 1:numel(mu2_grid)
                             for i8 = 1:numel(mu3_grid)
@@ -916,10 +915,10 @@ equilib_dark_sol.mu = mu_out;
                 mu3_grid = cell2mat(mu_grid_holder(3));
                 mu4_grid = cell2mat(mu_grid_holder(4));
                 num_grid_points = numel(EF_grid)*numel(mu1_grid)*numel(mu2_grid)*numel(mu3_grid)*numel(mu4_grid);
-                disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
+                % disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
                 for i5 = 1:numel(EF_grid)
                     percent_done = i5/numel(EF_grid)*100;
-                    disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
+                    % disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
                     for i6 = 1:numel(mu1_grid)
                         for i7 = 1:numel(mu2_grid)
                             for i8 = 1:numel(mu3_grid)
@@ -944,10 +943,10 @@ equilib_dark_sol.mu = mu_out;
                 mu4_grid = cell2mat(mu_grid_holder(4));
                 mu5_grid = cell2mat(mu_grid_holder(5));
                 num_grid_points = numel(EF_grid)*numel(mu1_grid)*numel(mu2_grid)*numel(mu3_grid)*numel(mu4_grid)*numel(mu5_grid);
-                disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
+                % disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
                 for i5 = 1:numel(EF_grid)
                     percent_done = i5/numel(EF_grid)*100;
-                    disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
+                    % disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
                     for i6 = 1:numel(mu1_grid)
                         for i7 = 1:numel(mu2_grid)
                             for i8 = 1:numel(mu3_grid)
@@ -975,10 +974,10 @@ equilib_dark_sol.mu = mu_out;
                 mu5_grid = cell2mat(mu_grid_holder(5));
                 mu6_grid = cell2mat(mu_grid_holder(6));
                 num_grid_points = numel(EF_grid)*numel(mu1_grid)*numel(mu2_grid)*numel(mu3_grid)*numel(mu4_grid)*numel(mu5_grid)*numel(mu6_grid);
-                disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
+                % disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
                 for i5 = 1:numel(EF_grid)
                     percent_done = i5/numel(EF_grid)*100;
-                    disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
+                    % disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
                     for i6 = 1:numel(mu1_grid)
                         for i7 = 1:numel(mu2_grid)
                             for i8 = 1:numel(mu3_grid)
@@ -1009,10 +1008,10 @@ equilib_dark_sol.mu = mu_out;
                 mu6_grid = cell2mat(mu_grid_holder(6));
                 mu7_grid = cell2mat(mu_grid_holder(7));
                 num_grid_points = numel(EF_grid)*numel(mu1_grid)*numel(mu2_grid)*numel(mu3_grid)*numel(mu4_grid)*numel(mu5_grid)*numel(mu6_grid)*numel(mu7_grid);
-                disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
+                % disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
                 for i5 = 1:numel(EF_grid)
                     percent_done = i5/numel(EF_grid)*100;
-                    disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
+                    % disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
                     for i6 = 1:numel(mu1_grid)
                         for i7 = 1:numel(mu2_grid)
                             for i8 = 1:numel(mu3_grid)
@@ -1046,10 +1045,10 @@ equilib_dark_sol.mu = mu_out;
                 mu7_grid = cell2mat(mu_grid_holder(7));
                 mu8_grid = cell2mat(mu_grid_holder(8));
                 num_grid_points = numel(EF_grid)*numel(mu1_grid)*numel(mu2_grid)*numel(mu3_grid)*numel(mu4_grid)*numel(mu5_grid)*numel(mu6_grid)*numel(mu7_grid)*numel(mu8_grid);
-                disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
+                % disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
                 for i5 = 1:numel(EF_grid)
                     percent_done = i5/numel(EF_grid)*100;
-                    disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
+                    % disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
                     for i6 = 1:numel(mu1_grid)
                         for i7 = 1:numel(mu2_grid)
                             for i8 = 1:numel(mu3_grid)
@@ -1086,10 +1085,10 @@ equilib_dark_sol.mu = mu_out;
                 mu8_grid = cell2mat(mu_grid_holder(8));
                 mu9_grid = cell2mat(mu_grid_holder(9));
                 num_grid_points = numel(EF_grid)*numel(mu1_grid)*numel(mu2_grid)*numel(mu3_grid)*numel(mu4_grid)*numel(mu5_grid)*numel(mu6_grid)*numel(mu7_grid)*numel(mu8_grid)*numel(mu9_grid);
-                disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
+                % disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
                 for i5 = 1:numel(EF_grid)
                     percent_done = i5/numel(EF_grid)*100;
-                    disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
+                    % disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
                     for i6 = 1:numel(mu1_grid)
                         for i7 = 1:numel(mu2_grid)
                             for i8 = 1:numel(mu3_grid)
@@ -1130,10 +1129,10 @@ equilib_dark_sol.mu = mu_out;
                 mu9_grid = cell2mat(mu_grid_holder(9));
                 mu10_grid = cell2mat(mu_grid_holder(10));
                 num_grid_points = numel(EF_grid)*numel(mu1_grid)*numel(mu2_grid)*numel(mu3_grid)*numel(mu4_grid)*numel(mu5_grid)*numel(mu6_grid)*numel(mu7_grid)*numel(mu8_grid)*numel(mu9_grid)*numel(mu10_grid);
-                disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
+                % disp(strcat('Starting grid search over_',num2str(num_grid_points),'_points in Ef-mu space'))
                 for i5 = 1:numel(EF_grid)
                     percent_done = i5/numel(EF_grid)*100;
-                    disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
+                    % disp(strcat(num2str(percent_done),'% throguh initial grid search.  Appreciate your patience'))
                     for i6 = 1:numel(mu1_grid)
                         for i7 = 1:numel(mu2_grid)
                             for i8 = 1:numel(mu3_grid)

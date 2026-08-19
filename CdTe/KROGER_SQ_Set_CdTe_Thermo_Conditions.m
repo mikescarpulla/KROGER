@@ -113,7 +113,7 @@ conditions.mu_constant_flag = ones(1,conditions.num_elements);
 conditions.mu_from_2nd_phases_flag = zeros(1,conditions.num_elements);   % set all to zero/false first then overwrite if needed
 
 % both of these options will overwrite entries in this variable intialized here - this is the one the actual calc uses (so dont change its name unless doing it inside the main calc too)
-conditions.muT_equilibrium = -30*ones(conditions.num_T_equilibrium, defects.numelements); %
+conditions.muT_equilibrium = -30*ones(conditions.num_T_equilibrium, defects.num_elements); %
 
 %% Matrix elements: set mu values first (first 2 columns for a binary, first 3 for a ternary, etc)
 [mu_Cd, mu_Te] = Cd_Te_CdTe_chem_potentials_from_conditions(conditions);
@@ -231,9 +231,9 @@ conditions.fixed_elements_mu_ranges(5,:) = [lo_mu_As hi_mu_As];
 
 % default is no elements fixed - catch if nothing entred.
 if ~isfield(conditions,'fixed_conc_flag') || sum(isempty(conditions.fixed_conc_flag))
-    conditions.fixed_conc_flag = zeros(defects.numelements,1);
+    conditions.fixed_conc_flag = zeros(defects.num_elements,1);
 elseif ~isfield(conditions,'fixed_conc_values') || sum(isempty(conditions.fixed_conc_values))
-    conditions.fixed_conc_values = zeros(defects.numelements,1);
+    conditions.fixed_conc_values = zeros(defects.num_elements,1);
 end
 
 % if something is not fixed but by accident it has a target conc set, jsut
@@ -247,7 +247,7 @@ conditions.num_fixed_elements = numel(conditions.indices_of_fixed_elements);
 
 if conditions.num_fixed_elements~=0
     for i=1:conditions.num_fixed_elements
-        msg = strcat('WARNING: Fixed concentration of element used for...',defects.elementnames(conditions.indices_of_fixed_elements(i)),'...Be sure you meant to do this.');
+        msg = strcat('WARNING: Fixed concentration of element used for...',defects.element_names(conditions.indices_of_fixed_elements(i)),'...Be sure you meant to do this.');
         disp(msg)
     end
 elseif conditions.num_fixed_elements==0

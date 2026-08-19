@@ -3,6 +3,9 @@ function [ratio_stoich, element_totals] = calc_stoich(solution, conditions, defe
 if strcmp(conditions.stoich_flag,'CdTe')
     [ratio_stoich, element_totals] = CdTe_stoich(solution, conditions, defects);
 
+elseif strcmp(conditions.stoich_flag,'CdTe_native_only')
+    [ratio_stoich, element_totals] = CdTe_stoich_native_only(solution, conditions, defects);
+
 elseif strcmp(conditions.stoich_flag,'Ga2O3')
     [ratio_stoich, element_totals] = Ga2O3_stoich(solution, conditions, defects);
 
