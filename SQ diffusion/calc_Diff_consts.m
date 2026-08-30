@@ -85,7 +85,7 @@ for k = 1:defects.num_defects
 
     % pick out the instance that has the lowest Emig - that one has best
     % chance of giving the max diffusion length during cooling
-    if numel(row_index)==1
+    if isscalar(row_index)
         Emig_maxD = defects.cs_D_Emig(abs_row_index);
         Do_maxD = Do(row_index,col_index);
     elseif numel(row_index)>1
