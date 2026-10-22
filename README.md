@@ -14,7 +14,7 @@ To run a scenario, we build up a "conditions" variable via a script (for now at 
 
 The example script is "defect_equilibrium_dark_with_frozen_script.m" (or something along those lines - look for "script" in the filename.  
 
-The defect database is stored in a .mat file that loads "defects" into the workspace.  Defects is a character array so holds all the needed info about the defects and their chargestates - text names, charge, formation energy without Ef and mu terms, which sites the defect uses in the crystal, what elements need to be added or subtracted to make the defect... all that stuff.  
+The defect database is stored in a .mat file that loads "defects" into the workspace.  Defects is a struct so holds all the needed info about the defects and their chargestates - text names, charge, formation energy without Ef and mu terms, which sites the defect uses in the crystal, what elements need to be added or subtracted to make the defect... all that stuff.  
 
 For better or worse, the current script keeps all sorts of things we have done in it as comments - that way we can turn things on and off by commenting/uncommenting.  
 
@@ -32,3 +32,5 @@ Mike Scarpulla
 University of Utah
 mike.scarpulla@utah.edu
 April 15, 2024
+
+
